@@ -284,6 +284,7 @@ struct EH_Camera
 	float fov;              /**< Field of view in the horizontal direction, in radians. */
 	float near_clip;
 	float far_clip;
+	float aspect;
 	uint_t image_width;
 	uint_t image_height;
 	EH_Mat view_to_world;	/**< View to world transform matrix,it's the inverse of view matrix. */
@@ -295,6 +296,7 @@ struct EH_Camera
 		fov(0.0f),
 		near_clip(0.0f),
 		far_clip(0.0f),
+		aspect(-1),
 		image_width(0),
 		image_height(0),
 		cubemap_render(false),
@@ -355,11 +357,15 @@ struct EH_Texture
 	const char *filename;	/**< The image filename */
 	float repeat_u;			/**< The u repeat scale */
 	float repeat_v;			/**< The v repeat scale */
+	float offset_u;			/**< The u offset scale */
+	float offset_v;			/**< The v offset scale */
 
 	EH_Texture() :
 		filename(NULL),
 		repeat_u(1.0f),
-		repeat_v(1.0f)
+		repeat_v(1.0f),
+		offset_u(0.0f),
+		offset_v(0.0f)
 	{
 
 	}

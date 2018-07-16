@@ -68,7 +68,7 @@ void getIncludedModels(Json::Value &model, EH_Context *ctx)
 					0, 0, 0.001f, 0,
 					0, 0, 0, 1
 				);
-				include_ess_mat = mm2m * y2z * include_ess_mat * y2z;
+				include_ess_mat = mm2m * y2z * l2r * include_ess_mat * l2r * y2z;
 				EH_AssemblyInstance include_inst;
 
 				include_inst.filename = (iter->second).c_str(); /* 需要包含的ESS */
@@ -246,6 +246,40 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 				// matrix
 				eiMatrix m_tran = l2r * y2z;
 
+				// generate material
+				EH_Material mat;
+				std::string file_path;
+
+				// test ----
+				mat.specular_weight = 0.4;
+				mat.glossiness = 92;
+
+				if (model["customModels"][i].isMember("color"))
+				{
+					int c = model["customModels"][i]["color"].asInt();
+					mat.diffuse_color[0] = (c / 256 / 256) % 256;
+					mat.diffuse_color[1] = (c / 256) % 256;
+					mat.diffuse_color[2] = c % 256;
+				}
+				if (model["customModels"][i].isMember("textureUrl"))
+				{
+					file_path = model["customModels"][i]["textureUrl"].asString();
+					mat.diffuse_tex.filename = file_path.c_str();
+				}
+				if (model["customModels"][i].isMember("repeat"))
+				{
+					mat.diffuse_tex.repeat_u = model["customModels"][i]["repeat"]["x"].asFloat();
+					mat.diffuse_tex.repeat_v = model["customModels"][i]["repeat"]["y"].asFloat();
+				}
+				if (model["customModels"][i].isMember("offset"))
+				{
+					mat.diffuse_tex.offset_u = model["customModels"][i]["offset"]["x"].asFloat();
+					mat.diffuse_tex.offset_v = model["customModels"][i]["offset"]["y"].asFloat();
+				}
+				char mat_name[32] = "";
+				sprintf(mat_name, "%s_%d", MAT_NAME, i);
+				EH_add_material(ctx, mat_name, &mat);
+
 				// generate instance
 				char mesh_name[32] = "";
 				sprintf(mesh_name, "%s_%d", MESH_NAME, i);
@@ -253,7 +287,7 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 				sprintf(inst_name, "inst_%s", mesh_name);
 				EH_MeshInstance inst;
 				inst.mesh_name = mesh_name;
-				inst.mtl_names[0] = DEFAULT_MTL;
+				inst.mtl_names[0] = mat_name;
 				memcpy(inst.mesh_to_world, m_tran.m, sizeof(inst.mesh_to_world));
 				EH_add_mesh_instance(ctx, inst_name, &inst);
 			}

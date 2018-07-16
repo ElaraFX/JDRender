@@ -16,6 +16,8 @@ struct GlobalSettings
 		camera_type = 0;
 		res_x = 1024;
 		res_y = 768;
+		eh_cam.near_clip = 0.1; 
+		eh_cam.far_clip = 100000; 
 	}
 };
 

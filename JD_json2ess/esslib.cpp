@@ -30,7 +30,7 @@ const eiMatrix l2r = ei_matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1);
 bool g_check_normal = false;
 bool g_gi_cache_show_samples = false;
 
-std::string AddTexture(EssWriter& writer, const std::string texPath, const float repeat_u, float repeat_v, const std::string texName, const std::string rootPath);
+std::string AddTexture(EssWriter& writer, const EH_Texture &t, const std::string texName, const std::string rootPath);
 std::string AddNormalBump(EssWriter& writer, const std::string &normalMap);
 
 std::string AddCameraData(EssWriter& writer, const EH_Camera &cam, std::string& NodeName, std::string& envName, bool panorama, int panorama_size, bool is_lefthand)
@@ -69,11 +69,7 @@ std::string AddCameraData(EssWriter& writer, const EH_Camera &cam, std::string& 
 		writer.AddRef("env_shader", envName);
 	}
 
- 	writer.AddScalar("focal", 1.0f);
-	writer.AddScalar("aperture", tan(cam.fov / 2.0f) * 2.0f); //how to deal with aperture?
-	writer.AddScalar("clip_hither", cam.near_clip);
-	writer.AddScalar("clip_yon", cam.far_clip);
-
+	float aspect = cam.aspect;
 	if (panorama)
 	{
 		writer.AddInt("res_x", panorama_size * 6);
@@ -81,10 +77,19 @@ std::string AddCameraData(EssWriter& writer, const EH_Camera &cam, std::string& 
 	} 
 	else
 	{
-		writer.AddScalar("aspect", (((float)cam.image_width)/cam.image_height));
+		if (cam.aspect <= 0)
+		{
+			aspect = (((float)cam.image_width)/cam.image_height);
+		}
+		writer.AddScalar("aspect", aspect);
 		writer.AddInt("res_x", cam.image_width);
 		writer.AddInt("res_y", cam.image_height);
 	}	
+
+ 	writer.AddScalar("focal", 1.0f);
+	writer.AddScalar("aperture", tan(cam.fov / 2.0f) * 2.0f * aspect); //how to deal with aperture?
+	writer.AddScalar("clip_hither", cam.near_clip);
+	writer.AddScalar("clip_yon", cam.far_clip);
  	
 	writer.EndNode();
 
@@ -596,11 +601,11 @@ void EssExporter::AddMaterialFromEss(const EH_Material &mat, std::string matName
 	std::string transparent_tex_node, diffuse_tex_node, normal_map_tex_node, specular_tex_node, emission_tex_node;
 	if(mat.diffuse_tex.filename && strlen(mat.diffuse_tex.filename) > 0)
 	{
-		diffuse_tex_node = AddTexture(mWriter, mat.diffuse_tex.filename, mat.diffuse_tex.repeat_u, mat.diffuse_tex.repeat_v, matName + "_d", mRootPath);
+		diffuse_tex_node = AddTexture(mWriter, mat.diffuse_tex, matName + "_d", mRootPath);
 	}	
 	if(mat.bump_tex.filename && strlen(mat.bump_tex.filename) > 0)
 	{
-		normal_map_tex_node = AddTexture(mWriter, mat.bump_tex.filename, mat.bump_tex.repeat_u, mat.bump_tex.repeat_v, matName + "_n", mRootPath);
+		normal_map_tex_node = AddTexture(mWriter, mat.bump_tex, matName + "_n", mRootPath);
 		if(mat.normal_bump)
 		{
 			normal_map_tex_node = AddNormalBump(mWriter, normal_map_tex_node);
@@ -608,15 +613,15 @@ void EssExporter::AddMaterialFromEss(const EH_Material &mat, std::string matName
 	}
 	if(mat.specular_tex.filename && strlen(mat.specular_tex.filename) > 0)
 	{
-		specular_tex_node = AddTexture(mWriter, mat.specular_tex.filename, mat.specular_tex.repeat_u, mat.specular_tex.repeat_v, matName + "_s", mRootPath);
+		specular_tex_node = AddTexture(mWriter, mat.specular_tex, matName + "_s", mRootPath);
 	}
 	if(mat.transp_tex.filename && strlen(mat.transp_tex.filename) > 0)
 	{
-		transparent_tex_node = AddTexture(mWriter, mat.transp_tex.filename, mat.transp_tex.repeat_u, mat.transp_tex.repeat_v, matName + "_t", mRootPath);
+		transparent_tex_node = AddTexture(mWriter, mat.transp_tex, matName + "_t", mRootPath);
 	}
 	if(mat.emission_tex.filename && strlen(mat.emission_tex.filename) > 0)
 	{
-		emission_tex_node = AddTexture(mWriter, mat.emission_tex.filename, mat.emission_tex.repeat_u, mat.emission_tex.repeat_v, matName + "_e", mRootPath);
+		emission_tex_node = AddTexture(mWriter, mat.emission_tex, matName + "_e", mRootPath);
 	}
 
 	std::string ei_standard_node = matName + "_ei_stn";
@@ -828,16 +833,19 @@ std::string AddLight(EssWriter& writer, const EH_Light& light, std::string &ligh
 	return instanceName;
 }
 
-std::string AddTexture(EssWriter& writer, const std::string texPath, const float repeat_u, float repeat_v, const std::string texName, const std::string rootPath){
+std::string AddTexture(EssWriter& writer, const EH_Texture &t, const std::string texName, const std::string rootPath){
+	std::string texPath = t.filename;
 	if(texPath.empty())return "";
 
 	std::string uvgenName = texName + "_uvgen";
 	writer.BeginNode("max_stduv", uvgenName);
 	writer.AddToken("mapChannel", "uv0");
-	writer.AddScalar("uScale", repeat_u);
+	writer.AddScalar("uScale", t.repeat_u);
 	writer.AddBool("uWrap", true);
-	writer.AddScalar("vScale", repeat_v);
+	writer.AddScalar("vScale", t.repeat_v);
 	writer.AddBool("vWrap", true);
+	writer.AddScalar("uOffset", t.offset_u);
+	writer.AddScalar("vOffset", t.offset_v);
 	writer.EndNode();
 
 	std::string bitmapName = texName + "_bitmap";
@@ -855,16 +863,19 @@ std::string AddTexture(EssWriter& writer, const std::string texPath, const float
 	return stdoutName;
 }
 
-std::string AddAlphaTexture(EssWriter& writer, const std::string &texPath, const float repeat_u, float repeat_v, const std::string &texName, const std::string &rootPath){
+std::string AddAlphaTexture(EssWriter& writer, const EH_Texture &t, const std::string &texName, const std::string &rootPath){
+	std::string texPath = t.filename;
 	if(texPath.empty())return "";
 
 	std::string uvgenName = texName + "_uvgen";
 	writer.BeginNode("max_stduv", uvgenName);
 	writer.AddToken("mapChannel", "uv0");
-	writer.AddScalar("uScale", repeat_u);
+	writer.AddScalar("uScale", t.repeat_u);
 	writer.AddBool("uWrap", true);
-	writer.AddScalar("vScale", repeat_v);
+	writer.AddScalar("vScale", t.repeat_v);
 	writer.AddBool("vWrap", true);
+	writer.AddScalar("uOffset", t.offset_u);
+	writer.AddScalar("vOffset", t.offset_v);
 	writer.EndNode();
 
 	std::string bitmapName = texName + "_bitmap";
@@ -899,11 +910,11 @@ std::string AddMaterial(EssWriter& writer, const EH_Material& mat, std::string &
 	std::string transparent_tex_node, diffuse_tex_node, normal_map_tex_node, specular_tex_node, emission_tex_node, displace_tex_node, refract_tex_node;
 	if(mat.diffuse_tex.filename && strlen(mat.diffuse_tex.filename) > 0)
 	{
-		diffuse_tex_node = AddTexture(writer, mat.diffuse_tex.filename, mat.diffuse_tex.repeat_u, mat.diffuse_tex.repeat_v, matName + "_d", rootPath);
+		diffuse_tex_node = AddTexture(writer, mat.diffuse_tex, matName + "_d", rootPath);
 	}	
 	if(mat.bump_tex.filename && strlen(mat.bump_tex.filename) > 0)
 	{
-		normal_map_tex_node = AddTexture(writer, mat.bump_tex.filename, mat.bump_tex.repeat_u, mat.bump_tex.repeat_v, matName + "_n", rootPath);
+		normal_map_tex_node = AddTexture(writer, mat.bump_tex, matName + "_n", rootPath);
 		if(mat.normal_bump)
 		{
 			normal_map_tex_node = AddNormalBump(writer, normal_map_tex_node);
@@ -911,23 +922,23 @@ std::string AddMaterial(EssWriter& writer, const EH_Material& mat, std::string &
 	}
 	if(mat.specular_tex.filename && strlen(mat.specular_tex.filename) > 0)
 	{
-		specular_tex_node = AddTexture(writer, mat.specular_tex.filename, mat.specular_tex.repeat_u, mat.specular_tex.repeat_v, matName + "_s", rootPath);
+		specular_tex_node = AddTexture(writer, mat.specular_tex, matName + "_s", rootPath);
 	}
 	if(mat.transp_tex.filename && strlen(mat.transp_tex.filename) > 0)
 	{
-		transparent_tex_node = AddTexture(writer, mat.transp_tex.filename, mat.transp_tex.repeat_u, mat.transp_tex.repeat_v, matName + "_t", rootPath);
+		transparent_tex_node = AddTexture(writer, mat.transp_tex, matName + "_t", rootPath);
 	}
 	if(mat.emission_tex.filename && strlen(mat.emission_tex.filename) > 0)
 	{
-		emission_tex_node = AddTexture(writer, mat.emission_tex.filename, mat.emission_tex.repeat_u, mat.emission_tex.repeat_v, matName + "_e", rootPath);
+		emission_tex_node = AddTexture(writer, mat.emission_tex, matName + "_e", rootPath);
 	}
 	if(mat.displace_tex.filename && strlen(mat.displace_tex.filename) > 0)
 	{
-		displace_tex_node = AddTexture(writer, mat.displace_tex.filename, mat.displace_tex.repeat_u, mat.displace_tex.repeat_v, matName + "_disp", rootPath);
+		displace_tex_node = AddTexture(writer, mat.displace_tex, matName + "_disp", rootPath);
 	}
 	if(mat.refract_tex.filename && strlen(mat.refract_tex.filename) > 0)
 	{
-		refract_tex_node = AddTexture(writer, mat.refract_tex.filename, mat.refract_tex.repeat_u, mat.refract_tex.repeat_v, matName + "_refract", rootPath);
+		refract_tex_node = AddTexture(writer, mat.refract_tex, matName + "_refract", rootPath);
 	}
 
 	std::string ei_standard_node = matName + "_ei_stn";

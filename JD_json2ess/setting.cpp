@@ -41,7 +41,7 @@ void getEnvironment(Json::Value &envi, EH_Context *ctx)
 			std::string hdr_path = envi["environmental"]["background"].asString();
 			sky.hdri_name = hdr_path.c_str();
 			sky.hdri_rotation = 0.0f;
-			sky.intensity = 0.5f;
+			sky.intensity = 1.0f;
 			EH_set_sky(ctx, &sky);
 		}
 	}
@@ -59,6 +59,14 @@ void getGlobalCameras(Json::Value &cameras, EH_Context *ctx)
 			{
 				g_s.eh_cam.fov = cameras["camera"][0]["fov"].asFloat() / 180 * EI_PI;
 			}
+			if (cameras["camera"][0].isMember("far"))
+			{
+				g_s.eh_cam.far_clip = cameras["camera"][0]["far"].asFloat();
+			}
+			/*if (cameras["camera"][0].isMember("aspect"))
+			{
+				g_s.eh_cam.aspect = cameras["camera"][0]["aspect"].asFloat();
+			}*/
 			float mat[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 			if (cameras["camera"][0].isMember("matrixWorld"))
 			{
@@ -76,10 +84,6 @@ void getGlobalCameras(Json::Value &cameras, EH_Context *ctx)
 
 			c_tran = c_tran * l2r * y2z;
 			memcpy(g_s.eh_cam.view_to_world, c_tran.m, sizeof(g_s.eh_cam.view_to_world));
-
-			// some default value
-			g_s.eh_cam.near_clip = 0.1; 
-			g_s.eh_cam.far_clip = 1000000; 
 		}
 
 		// get multiple cameras

@@ -8,6 +8,7 @@
 
 #define DEFAULT_MTL "default_mtl"
 #define MESH_NAME "c_mesh"
+#define MAT_NAME "c_material"
 
 
 typedef std::tr1::unordered_map<int, std::string> ModelMap;

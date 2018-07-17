@@ -5,15 +5,19 @@
 #include "data.h"
 
 
+#define CAMERA_NAME "SceneCamera_"
+
 struct GlobalSettings
 {
 	int camera_type;           // 0: normal, 1: panorama
+	int camera_number;
 	int res_x;
 	int res_y;
 	EH_Camera eh_cam;
 	GlobalSettings()
 	{
 		camera_type = 0;
+		camera_number = 0;
 		res_x = 1024;
 		res_y = 768;
 		eh_cam.near_clip = 0.1; 

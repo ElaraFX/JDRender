@@ -257,9 +257,9 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 				if (model["customModels"][i].isMember("color"))
 				{
 					int c = model["customModels"][i]["color"].asInt();
-					mat.diffuse_color[0] = (c / 256 / 256) % 256;
-					mat.diffuse_color[1] = (c / 256) % 256;
-					mat.diffuse_color[2] = c % 256;
+					mat.diffuse_color[0] = float((c / 256 / 256) % 256) / 255.0f;
+					mat.diffuse_color[1] = float((c / 256) % 256) / 255.0f;
+					mat.diffuse_color[2] = float(c % 256) / 255.0f;
 				}
 				if (model["customModels"][i].isMember("textureUrl"))
 				{

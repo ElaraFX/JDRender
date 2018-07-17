@@ -52,9 +52,9 @@ void getGlobalCameras(Json::Value &cameras, EH_Context *ctx)
 {
 	if (cameras.isMember("camera"))
 	{
-		if (cameras["camera"].size() > 0)
+		// get default camera
+		if (g_s.eh_cam.cubemap_render == false && cameras["camera"].size() > 0)
 		{
-			// get default camera
 			if (cameras["camera"][0].isMember("fov"))
 			{
 				g_s.eh_cam.fov = cameras["camera"][0]["fov"].asFloat() / 180 * EI_PI;
@@ -63,10 +63,10 @@ void getGlobalCameras(Json::Value &cameras, EH_Context *ctx)
 			{
 				g_s.eh_cam.far_clip = cameras["camera"][0]["far"].asFloat();
 			}
-			/*if (cameras["camera"][0].isMember("aspect"))
+			if (cameras["camera"][0].isMember("aspect"))
 			{
 				g_s.eh_cam.aspect = cameras["camera"][0]["aspect"].asFloat();
-			}*/
+			}
 			float mat[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 			if (cameras["camera"][0].isMember("matrixWorld"))
 			{
@@ -84,15 +84,52 @@ void getGlobalCameras(Json::Value &cameras, EH_Context *ctx)
 
 			c_tran = c_tran * l2r * y2z;
 			memcpy(g_s.eh_cam.view_to_world, c_tran.m, sizeof(g_s.eh_cam.view_to_world));
+			g_s.camera_number = 1;
 		}
 
-		// get multiple cameras
+		// get multiple cubemap cameras
 		if (g_s.eh_cam.cubemap_render == true)
 		{
-			for (unsigned int i = 1; i < cameras["camera"].size(); i++)
+			EH_Camera eh_cam;
+			eh_cam.cubemap_render = true;
+			eh_cam.image_height = g_s.eh_cam.image_width;
+			eh_cam.image_width = g_s.eh_cam.image_width * 6;
+			for (unsigned int i = 0; i < cameras["camera"].size(); i++)
 			{
+				if (cameras["camera"][0].isMember("fov"))
+				{
+					eh_cam.fov = cameras["camera"][0]["fov"].asFloat() / 180 * EI_PI;
+				}
+				if (cameras["camera"][0].isMember("far"))
+				{
+					eh_cam.far_clip = cameras["camera"][0]["far"].asFloat();
+				}
+				if (cameras["camera"][0].isMember("aspect"))
+				{
+					eh_cam.aspect = cameras["camera"][0]["aspect"].asFloat();
+				}
+				float mat[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+				if (cameras["camera"][0].isMember("matrixWorld"))
+				{
+					for (unsigned int j = 0; j < cameras["camera"][0]["matrixWorld"].size() && j < 16; j++)
+					{
+						mat[j] = cameras["camera"][0]["matrixWorld"][j].asFloat();
+					}
+				}
+				eiMatrix c_tran = ei_matrix(
+					mat[0], mat[1], mat[2], mat[3],
+					mat[4], mat[5], mat[6], mat[7],
+					mat[8], mat[9], mat[10], mat[11],
+					mat[12], mat[13], mat[14], mat[15]
+					);
 
+				c_tran = c_tran * l2r * y2z;
+				memcpy(eh_cam.view_to_world, c_tran.m, sizeof(eh_cam.view_to_world));
+				char inst_name[128] = "";
+				sprintf(inst_name, "%s%d", CAMERA_NAME, i);
+				EH_add_camera(ctx, &eh_cam, inst_name);
 			}
+			g_s.camera_number = cameras["camera"].size();
 		}
 	}
 }

@@ -568,6 +568,7 @@ struct EH_Sky
 	const char *hdri_name;
 	float hdri_rotation; /* in degrees */
 	bool enable_emit_GI;
+	EH_RGB color;
 
 	EH_Sky() :
 		enabled(true),
@@ -575,7 +576,7 @@ struct EH_Sky
 		hdri_name(NULL),
 		hdri_rotation(0.0f)
 	{
-
+		color[0] = color[1] = color[2] = 0;
 	}
 };
 

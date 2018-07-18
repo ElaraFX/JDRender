@@ -38,22 +38,44 @@ void getEnvironment(Json::Value &envi, EH_Context *ctx)
 {
 	if (envi.isMember("environmental"))
 	{
+		EH_Sky sky;
+		sky.enabled = true;
+		std::string hdr_path;
 		if (envi["environmental"].isMember("background"))
 		{
-			EH_Sky sky;
-			sky.enabled = true;
-			std::string hdr_path = envi["environmental"]["background"].asString();
+			hdr_path = envi["environmental"]["background"].asString();
 			sky.hdri_name = hdr_path.c_str();
 			sky.hdri_rotation = 0.0f;
-			if (envi["environmental"].isMember("strength"))
-			{
-				sky.intensity = envi["environmental"]["strength"].asFloat();
-			}
-			else
-			{
-				sky.intensity = 1.0f;
-			}
-			EH_set_sky(ctx, &sky);
+		}
+		if (envi["environmental"].isMember("color"))
+		{
+			int c = envi["environmental"]["color"].asInt();
+			sky.color[0] = float((c / 256 / 256) % 256) / 255.0f;
+			sky.color[1] = float((c / 256) % 256) / 255.0f;
+			sky.color[2] = float(c % 256) / 255.0f;
+		}
+		
+		if (envi["environmental"].isMember("strength"))
+		{
+			sky.intensity = envi["environmental"]["strength"].asFloat();
+		}
+		else
+		{
+			sky.intensity = 1.0f;
+		}
+		EH_set_sky(ctx, &sky);
+
+		// sunlight
+		if (envi["environmental"].isMember("sun_strenth"))
+		{
+			/*EH_Sun sun;
+			sun.dir[0] = dir[0];
+			sun.dir[1] = dir[1];
+			float color[3] = {0.94902, 0.776471, 0.619608};
+			memcpy(sun.color, color, sizeof(color));
+			sun.intensity = 94.24778;
+			sun.soft_shadow = 1.0f;
+			EH_set_sun(ctx, &sun);*/
 		}
 	}
 }

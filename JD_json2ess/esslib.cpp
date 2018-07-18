@@ -454,17 +454,27 @@ std::string AddHDRI(EssWriter& writer, const std::string hdri_name, float rotati
 }
 
 
-std::string AddBackground(EssWriter& writer, const std::string &hdri_name, const float rotation, const float hdri_intensity, bool enable_emit_GI)
+std::string AddBackground(EssWriter& writer, const EH_Sky *sky, bool enable_emit_GI)
 {
-	std::string sky_shader;
-	sky_shader = AddHDRI(writer, hdri_name, rotation, hdri_intensity);
+	if (sky->hdri_name != NULL && !std::string(sky->hdri_name).empty())
+	{
+		std::string sky_shader;
+		sky_shader = AddHDRI(writer, std::string(sky->hdri_name), sky->hdri_rotation, sky->intensity);
+		writer.BeginNode("output_result", "global_environment");
+		writer.LinkParam("input", sky_shader, "result");	
+		writer.AddBool("env_emits_GI", enable_emit_GI);
+		writer.EndNode();
+	}
+	else
+	{
+		eiVector color = ei_vector(sky->color[0], sky->color[1], sky->color[2]);
+		writer.BeginNode("output_result", "global_environment");
+		writer.AddColor("input", color);
+		writer.AddBool("env_emits_GI", enable_emit_GI);
+		writer.EndNode();
+	}
 
-	if (sky_shader.empty())return "";
-
-	writer.BeginNode("output_result", "global_environment");
-	writer.LinkParam("input", sky_shader, "result");	
-	writer.AddBool("env_emits_GI", enable_emit_GI);
-	writer.EndNode();
+	
 
 	std::vector<std::string> names;
 	names.push_back("global_environment");
@@ -1101,9 +1111,9 @@ void EssExporter::AddCustomOption(const EH_CustomRenderOptions &option)
 	AddCustomOptions(mWriter, option, mOptionName);
 }
 
-bool EssExporter::AddBackground(const std::string &hdri_name, const float rotation, const float hdri_intensity, bool enable_emit_GI)
+bool EssExporter::AddBackground(const EH_Sky *sky, bool enable_emit_GI)
 {
-	mEnvName = ::AddBackground(mWriter, hdri_name, rotation, hdri_intensity, enable_emit_GI);
+	mEnvName = ::AddBackground(mWriter, sky, enable_emit_GI);
 	return true;
 }
 

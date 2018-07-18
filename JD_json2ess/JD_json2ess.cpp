@@ -77,7 +77,7 @@ bool translateJson(const char* json_file_path, const char* out_file_path)
 	getGlobalSettings(root1, pContext);
 	getEnvironment(root1, pContext);
 	getGlobalCameras(root1, pContext);
-	setCamera(pContext);
+	setParameter(pContext);
 
 	EH_end_export(pContext);
 	EH_delete(pContext);
@@ -86,7 +86,7 @@ bool translateJson(const char* json_file_path, const char* out_file_path)
 
 int main()
 {
-	translateJson("D:/work/JDRender/JD_json2ess/simple.json", "d:/jd1.ess");
+	translateJson("D:/work/JDRender/JD_json2ess/complex2.json", "d:/jd1.ess");
 	system("pause");
 	return 1;
 }

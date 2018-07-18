@@ -15,32 +15,40 @@ void getLight(Json::Value &light, EH_Context *ctx)
 
 			if (light["customLights"][i].isMember("type"))
 			{
-				if (light["customLights"][i]["type"].asString() == "point")
+				if (light["customLights"][i]["type"].asString() == "sphere")
 				{
-					l.type = EH_LIGHT_POINT;
+					l.type = EH_LIGHT_SPHERE;
+					if (light["customLights"][i].isMember("radius"))
+					{
+						l.size[0] = light["customLights"][i]["radius"].asFloat();
+					}
 				}
 				else if (light["customLights"][i]["type"].asString() == "quad")
 				{
 					l.type = EH_LIGHT_QUAD;
+					if (light["customLights"][i].isMember("width"))
+					{
+						l.size[0] = light["customLights"][i]["length"].asFloat();
+					}
+					if (light["customLights"][i].isMember("height"))
+					{
+						l.size[1] = light["customLights"][i]["height"].asFloat();
+					}
 				}
-				else
+				else if (light["customLights"][i]["type"].asString() == "spotlight")
 				{
-					l.type = EH_LIGHT_POINT;
+
+				}
+
+				// common attributes
+				if (light["customLights"][i].isMember("strength"))
+				{
+					l.intensity = light["customLights"][i]["strength"].asFloat();
 				}
 			}
 
-			if (light["customLights"][i].isMember("strength"))
-			{
-				l.intensity = light["customLights"][i]["strength"].asFloat();
-			}
-			if (light["customLights"][i].isMember("width"))
-			{
-				l.size[0] = light["customLights"][i]["length"].asFloat();
-			}
-			if (light["customLights"][i].isMember("height"))
-			{
-				l.size[1] = light["customLights"][i]["height"].asFloat();
-			}
+			
+			
 
 			
 			float mat[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};

@@ -27,6 +27,10 @@ void getGlobalSettings(Json::Value &global_settings, EH_Context *ctx)
 		{
 			g_s.eh_cam.image_height = global_settings["renderSettings"]["height"].asInt();
 		}
+		if (global_settings["renderSettings"].isMember("quality"))
+		{
+			g_s.quality = EH_RenderQuality(global_settings["renderSettings"]["quality"].asInt());
+		}
 	}
 }
 
@@ -41,7 +45,14 @@ void getEnvironment(Json::Value &envi, EH_Context *ctx)
 			std::string hdr_path = envi["environmental"]["background"].asString();
 			sky.hdri_name = hdr_path.c_str();
 			sky.hdri_rotation = 0.0f;
-			sky.intensity = 1.0f;
+			if (envi["environmental"].isMember("strength"))
+			{
+				sky.intensity = envi["environmental"]["strength"].asFloat();
+			}
+			else
+			{
+				sky.intensity = 1.0f;
+			}
 			EH_set_sky(ctx, &sky);
 		}
 	}
@@ -134,7 +145,13 @@ void getGlobalCameras(Json::Value &cameras, EH_Context *ctx)
 	}
 }
 
-void setCamera(EH_Context *ctx)
+void setParameter(EH_Context *ctx)
 {
 	EH_set_camera(ctx, &g_s.eh_cam);
+
+	// set options
+	EH_RenderOptions render_op;
+	render_op.quality = g_s.quality;
+	EH_set_options_name(ctx, "GlobalOptionsName");
+	EH_set_render_options(ctx, &render_op);
 }

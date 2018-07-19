@@ -868,6 +868,7 @@ std::string AddTexture(EssWriter& writer, const EH_Texture &t, const std::string
 	writer.BeginNode("max_stdout", stdoutName);
 	writer.AddInt("useColorMap", 0);
 	writer.LinkParam("stdout_color", bitmapName, "result");
+	writer.LinkParam("stdout_bump", bitmapName, "result_bump");
 	writer.EndNode();
 
 	return stdoutName;
@@ -909,7 +910,7 @@ std::string AddAlphaTexture(EssWriter& writer, const EH_Texture &t, const std::s
 std::string AddNormalBump(EssWriter& writer, const std::string &normalMap){
 	std::string normalName = normalMap + "_normal";
 	writer.BeginNode("max_normal_bump", normalName);
-	writer.LinkParam("tex_normal_map", normalMap, "result");
+	writer.LinkParam("tex_normal_map", normalMap, "result_bump");
 	writer.EndNode();
 	return normalName;
 }
@@ -1123,6 +1124,7 @@ std::string AddVrayMaterial(EssWriter& writer, const EH_Vray_Material& mat, std:
 	{		
 		writer.AddBool("texmap_bump_on", true);
 		writer.LinkParam("texmap_bump", normal_map_tex_node, "result_bump");
+		writer.LinkParam("tex_bump", normal_map_tex_node, "result_bump");
 		writer.AddScalar("texmap_bump_multiplier", mat.bump_weight);
 	}
 

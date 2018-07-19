@@ -282,6 +282,7 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 				}
 				if (model["customModels"][i].isMember("bump_texturePath"))
 				{
+					mat.normal_bump = false;
 					bump_tex = model["customModels"][i]["bump_texturePath"].asString();
 					mat.bump_tex.filename = bump_tex.c_str();
 				}

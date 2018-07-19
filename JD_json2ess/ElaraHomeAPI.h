@@ -402,13 +402,13 @@ struct EH_Vray_Material
 		bump_weight(0.0f),
 		normal_bump(true)
 	{
-		diffuse_color[0] = 1.0f; /* default diffuse color is red */
-		diffuse_color[1] = 0.0f;
-		diffuse_color[2] = 0.0f;
+		diffuse_color[0] = 1.0f;
+		diffuse_color[1] = 1.0f;
+		diffuse_color[2] = 1.0f;
 
-		specular_color[0] = 1.0f;
-		specular_color[1] = 1.0f;
-		specular_color[2] = 1.0f;
+		specular_color[0] = 0.0f;
+		specular_color[1] = 0.0f;
+		specular_color[2] = 0.0f;
 	}
 };
 

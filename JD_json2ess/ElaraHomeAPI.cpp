@@ -439,6 +439,11 @@ void EH_add_material(EH_Context *ctx, const char *name, const EH_Material *mtl)
 	reinterpret_cast<EssExporter*>(ctx)->AddMaterial(*mtl, std::string(name));
 }
 
+void EH_add_vray_material(EH_Context *ctx, const char *name, const EH_Vray_Material *mtl)
+{
+	reinterpret_cast<EssExporter*>(ctx)->AddVrayMaterial(*mtl, std::string(name));
+}
+
 void EH_add_mesh_instance(EH_Context *ctx, const char *name, const EH_MeshInstance *inst)
 {
 	reinterpret_cast<EssExporter*>(ctx)->AddMeshInstance(name, *inst);

@@ -371,6 +371,47 @@ struct EH_Texture
 	}
 };
 
+/** The vray material data for user to fill,
+    not have full attributes of max_vray_mtl,
+	now only used in JD project
+ */
+struct EH_Vray_Material
+{
+	int brdf_type;
+
+	/* Diffuse layer */
+	EH_RGB diffuse_color;		/**< Diffuse color, Range: [0, inf), default: (1 1 1) */  
+	float roughness;			/**< Oren-Nayar based Roughness, Range: [0, 1], default: 0 */
+	EH_Texture diffuse_tex;		/**< Diffuse texture */
+
+	/* Specular layer */
+	EH_RGB specular_color;		/**< Specular color, Range: [0, inf), default: (1 1 1) */
+	EH_Texture specular_tex;	/**< Specular texture */
+	float glossiness;			/**< Glossiness, Range: [0, 100], default: 90 */
+	float specular_fresnel;		/**< IOR for adjusting Fresnel effect using Schlick's approximation, Range: [0, inf), default: 1.5 */
+	
+	/* Bump mapping */
+	float bump_weight;			/**< bump weight, Range: (-inf, inf), default: 0 */
+	EH_Texture bump_tex;		/**< The texture for bump mapping */
+	bool normal_bump;			/**< The bump texture is actually a normal map? */
+	EH_Vray_Material() :
+		brdf_type(1),
+		roughness(0.0f),
+		glossiness(0.0f),
+		specular_fresnel(1.5f),
+		bump_weight(0.0f),
+		normal_bump(true)
+	{
+		diffuse_color[0] = 1.0f; /* default diffuse color is red */
+		diffuse_color[1] = 0.0f;
+		diffuse_color[2] = 0.0f;
+
+		specular_color[0] = 1.0f;
+		specular_color[1] = 1.0f;
+		specular_color[2] = 1.0f;
+	}
+};
+
 /** The material data for user to fill
  */
 struct EH_Material
@@ -477,6 +518,11 @@ struct EH_Material
 EH_API void EH_add_material(EH_Context *ctx, const char *name, const EH_Material *mtl);
 
 
+/** Add a vray material to the scene.
+ * \param name The name of the material.
+ * \param mtl The material data.
+ */
+EH_API void EH_add_vray_material(EH_Context *ctx, const char *name, const EH_Vray_Material *mtl);
 
 /** The mesh instance data for user to fill
  */

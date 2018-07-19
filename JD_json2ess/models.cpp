@@ -247,24 +247,47 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 				eiMatrix m_tran = l2r * y2z;
 
 				// generate material
-				EH_Material mat;
-				std::string file_path;
-
-				// test ----
-				mat.specular_weight = 0.4;
-				mat.glossiness = 92;
-
-				if (model["customModels"][i].isMember("color"))
+				EH_Vray_Material mat;
+				std::string diffuse_tex, bump_tex;
+				if (model["customModels"][i].isMember("material"))
 				{
-					int c = model["customModels"][i]["color"].asInt();
-					mat.diffuse_color[0] = float((c / 256 / 256) % 256) / 255.0f;
-					mat.diffuse_color[1] = float((c / 256) % 256) / 255.0f;
-					mat.diffuse_color[2] = float(c % 256) / 255.0f;
+					if (model["customModels"][i]["material"].isMember("diffuse"))
+					{
+						int c = model["customModels"][i]["material"]["diffuse"].asInt();
+						mat.diffuse_color[0] = float((c / 256 / 256) % 256) / 255.0f;
+						mat.diffuse_color[1] = float((c / 256) % 256) / 255.0f;
+						mat.diffuse_color[2] = float(c % 256) / 255.0f;
+					}
+					if (model["customModels"][i]["material"].isMember("specular"))
+					{
+						int c = model["customModels"][i]["material"]["specular"].asInt();
+						mat.diffuse_color[0] = float((c / 256 / 256) % 256) / 255.0f;
+						mat.diffuse_color[1] = float((c / 256) % 256) / 255.0f;
+						mat.diffuse_color[2] = float(c % 256) / 255.0f;
+					}
+					if (model["customModels"][i]["material"].isMember("glossiness"))
+					{
+						mat.glossiness = model["customModels"][i]["material"]["glossiness"].asFloat();
+					}
+					if (model["customModels"][i]["material"].isMember("ior"))
+					{
+						mat.specular_fresnel = model["customModels"][i]["material"]["ior"].asFloat();
+					}
 				}
-				if (model["customModels"][i].isMember("textureUrl"))
+				
+				if (model["customModels"][i].isMember("diffuse_texturePath"))
 				{
-					file_path = model["customModels"][i]["textureUrl"].asString();
-					mat.diffuse_tex.filename = file_path.c_str();
+					diffuse_tex = model["customModels"][i]["diffuse_texturePath"].asString();
+					mat.diffuse_tex.filename = diffuse_tex.c_str();
+				}
+				if (model["customModels"][i].isMember("bump_texturePath"))
+				{
+					bump_tex = model["customModels"][i]["bump_texturePath"].asString();
+					mat.bump_tex.filename = bump_tex.c_str();
+				}
+				if (model["customModels"][i].isMember("bump_mult"))
+				{
+					mat.bump_weight = model["customModels"][i]["bump_mult"].asFloat();
 				}
 				if (model["customModels"][i].isMember("repeat"))
 				{
@@ -278,7 +301,7 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 				}
 				char mat_name[32] = "";
 				sprintf(mat_name, "%s_%d", MAT_NAME, i);
-				EH_add_material(ctx, mat_name, &mat);
+				EH_add_vray_material(ctx, mat_name, &mat);
 
 				// generate instance
 				char mesh_name[32] = "";

@@ -69,6 +69,7 @@ public:
 	void AddMeshInstance(const char *instName, const EH_MeshInstance &meshInst);
 	bool AddLight(const EH_Light& light, std::string &lightName, bool is_show_area);
 	bool AddMaterial(const EH_Material& mat, std::string &matName);
+	bool AddVrayMaterial(const EH_Vray_Material& mat, std::string &matName);
 	void SetOptionName(std::string &name);
 	void AddDefaultOption();
 	void AddMediumOption();
@@ -80,6 +81,7 @@ public:
 	void AddCustomOption(const EH_CustomRenderOptions &option);
 	bool AddBackground(const EH_Sky *sky, bool enable_emit_GI);
 	bool AddSun(const EH_Sun &sun);
+	bool AddSun(const EH_Sun &sun, eiMatrix &mat);
 	void SetTexPath(std::string &path);
 	void AddAssemblyInstance(const char *name, const EH_AssemblyInstance &assembly_inst);
 	void AddMaterialFromEss(const EH_Material &mat, std::string matName, const char *essName);

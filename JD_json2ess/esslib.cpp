@@ -294,7 +294,7 @@ void AddHighOptions(EssWriter &writer, std::string &opt_name)
 	writer.AddInt("volume_indirect_samples", 8);
 	writer.AddScalar("light_cutoff", 0.01);
 	writer.AddScalar("GI_cache_density", 1.0);
-	writer.AddInt("GI_cache_passes", 150);	
+	writer.AddInt("GI_cache_passes", 300);	
 	writer.AddInt("GI_cache_points", 5);
 	writer.AddEnum("GI_cache_preview", "accurate");
 	writer.AddInt("diffuse_depth", 5);
@@ -1078,6 +1078,93 @@ std::string AddMaterial(EssWriter& writer, const EH_Material& mat, std::string &
 	return matName;
 }
 
+std::string AddVrayMaterial(EssWriter& writer, const EH_Vray_Material& mat, std::string &matName, const std::string &rootPath, bool &use_displace)
+{
+	float eps = 0.0000001;
+	std::string diffuse_tex_node, normal_map_tex_node, specular_tex_node;
+	if(mat.diffuse_tex.filename && strlen(mat.diffuse_tex.filename) > 0)
+	{
+		diffuse_tex_node = AddTexture(writer, mat.diffuse_tex, matName + "_d", rootPath);
+	}	
+	if(mat.bump_tex.filename && strlen(mat.bump_tex.filename) > 0)
+	{
+		normal_map_tex_node = AddTexture(writer, mat.bump_tex, matName + "_n", rootPath);
+		if(mat.normal_bump)
+		{
+			normal_map_tex_node = AddNormalBump(writer, normal_map_tex_node);
+		}
+	}
+	if(mat.specular_tex.filename && strlen(mat.specular_tex.filename) > 0)
+	{
+		specular_tex_node = AddTexture(writer, mat.specular_tex, matName + "_s", rootPath);
+	}
+
+	std::string ei_standard_node = matName + "_ei_vray";
+	writer.BeginNode("max_vray_mtl", ei_standard_node);
+	
+	eiVector diff_color = ei_vector(mat.diffuse_color[0], mat.diffuse_color[1], mat.diffuse_color[2]);
+	writer.AddColor("diffuse_color", diff_color);
+	if(mat.diffuse_tex.filename != 0 && strlen(mat.diffuse_tex.filename) > 0){
+		writer.AddBool("texmap_diffuse_on", true);
+		writer.LinkParam("texmap_diffuse", diffuse_tex_node, "result");
+		writer.AddScalar("texmap_diffuse_multiplier", 100.0f);
+	}
+
+	eiVector spec_color = ei_vector(mat.specular_color[0], mat.specular_color[1], mat.specular_color[2]);
+	writer.AddColor("specular_color", spec_color);
+	if(mat.specular_tex.filename != 0 && strlen(mat.specular_tex.filename) > 0)
+	{
+		writer.AddBool("texmap_specular_on", true);
+		writer.LinkParam("specular_color", specular_tex_node, "result");
+		writer.AddScalar("texmap_specular_multiplier", 100.0f);
+	}
+
+	if(mat.bump_tex.filename != 0 && strlen(mat.bump_tex.filename) > 0)
+	{		
+		writer.AddBool("texmap_bump_on", true);
+		writer.LinkParam("texmap_bump", normal_map_tex_node, "result_bump");
+		writer.AddScalar("texmap_bump_multiplier", mat.bump_weight);
+	}
+
+	writer.AddInt("brdf_type", mat.brdf_type);
+	writer.AddScalar("diffuse_roughness", mat.roughness);
+	writer.AddScalar("reflection_glossiness", mat.glossiness);
+	writer.AddScalar("reflection_ior", mat.specular_fresnel);
+	writer.EndNode();
+
+	std::string result_node = matName + "_result";
+
+	if (g_check_normal)
+	{
+		writer.BeginNode("normal_check", result_node);
+	}
+	else
+	{
+		writer.BeginNode("max_result", result_node);
+		writer.LinkParam("input", ei_standard_node, "result");
+	}	
+	writer.EndNode();
+
+	std::string mat_link_name = matName + "_osl";
+	std::vector<std::string> shaderNames;
+	shaderNames.push_back(result_node);
+	writer.BeginNode("osl_shadergroup", mat_link_name);
+	writer.AddRefGroup("nodes", shaderNames);
+	writer.EndNode();
+	
+	writer.BeginNode("material", matName);
+	writer.AddRef("surface_shader", mat_link_name);
+
+	if(use_displace)
+	{
+		writer.AddRef("displace_shader", mat_link_name);
+	}
+
+	writer.EndNode();
+
+	return matName;
+}
+
 inline int ClampToRange(int value, int max)
 {
 	if (max == 0) return 0;
@@ -1140,6 +1227,47 @@ bool EssExporter::AddSun(const EH_Sun &sun)
 	std::string sunName = ::AddSun(mWriter, sun_mat, sun.intensity, suncolor, hardness, mLightSamples);
 	mElInstances.push_back(sunName);
 	return true;
+}
+
+bool EssExporter::AddSun(const EH_Sun &sun, eiMatrix &mat)
+{
+	if (sun.intensity == 0 || sun.enabled == false)return true;
+	eiVector sun_dir;
+	eiVector suncolor;
+	suncolor.x = sun.color[0];
+	suncolor.y = sun.color[1];
+	suncolor.z = sun.color[2];
+	eiVector2 sun_sphere_coord = ei_vector2(sun.dir[0], sun.dir[1]);	
+	if (mIsLeftHand)
+	{
+		mat = mat * l2r;
+	}
+
+	double sun_size = 695500.0 * sun.soft_shadow;
+	double sun_dist = 149597870.0;
+	float hardness = cos(asin(sun_size / (sun_dist + sun_size)));
+	std::string sunName = ::AddSun(mWriter, mat, sun.intensity, suncolor, hardness, mLightSamples);
+	mElInstances.push_back(sunName);
+	return true;
+}
+
+bool EssExporter::AddVrayMaterial(const EH_Vray_Material& mat, std::string &matName)
+{
+	bool use_displace = false;
+	std::string materialName = ::AddVrayMaterial(mWriter, mat, matName, mRootPath, use_displace);
+
+	if (use_displace)
+	{
+		mUseDisplacement = true;
+	}
+
+	if (materialName != "")
+	{
+		mElMaterials.push_back(materialName);
+		return true;
+	}else{
+		return false;
+	}
 }
 
 bool EssExporter::AddMaterial(const EH_Material& mat, std::string &matName)

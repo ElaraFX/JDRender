@@ -28,6 +28,7 @@ fn OptimizeMesh maxFace =
 			mSmooth.enabled = false
 		)
 	)
+	print ("Finished " + "OptimizeMesh")
 )
 
 fn AutoUnwrapUV =
@@ -39,8 +40,8 @@ fn AutoUnwrapUV =
 		
 		unwrapMod.setAlwaysEdit ( false )
 		unwrapMod.setMapChannel ( 2 )
-		unwrapMod.setFlattenAngle ( 60 )
-		unwrapMod.setFlattenSpacing( 0.02 )
+		unwrapMod.setFlattenAngle ( 20 )
+		unwrapMod.setFlattenSpacing( 0.001 )
 		--unwrapMod.setFlattenNormalize( commonBakeProps.cNormalize.checked )
 		unwrapMod.setFlattenNormalize( true )
 		unwrapMod.setFlattenRotate( true )
@@ -50,35 +51,31 @@ fn AutoUnwrapUV =
 		select OBJ
 		addModifier OBJ unwrapMod
 		
-		unwrapMod.flattenMap 60	unwrapUVW_normalList 0.02 true 0 true true 
+		unwrapMod.flattenMap 20	unwrapUVW_normalList 0.001 true 0 true true 
 	)
+	print ("Finished " + "AutoUnwrapUV")
 )
 
 fn BakeDiffuseAndAlpha obj size pName=
 (
+	pngio.setAlpha true;
 	--Clear all render elements 
 	obj.iNodeBakeProperties.removeAllBakeElements() 
 	--Preparing the Bake Elements:
 	be1 = VRayDiffuseFilterMap() --instance of the bake element class
 	be1.outputSzX = be1.outputSzY = size --set the size of the baked map --specifythe full file path, name and type:
-	be1.fileType = (pName + obj.name +"_diffuse.png")
+	be1.fileType = (pName + "texture.png")
 	--be1.fileName = filenameFromPath be1.fileType
 	be1.filterOn = true --enable filtering
+	be1.backgroundColor = (color 127.5 127.5 127.5)
 	--be1.shadowsOn = false --disable shadows
 	--be1.lightingOn = false --disable lighting
 	be1.enabled = true --enable baking
-	be2 = AlphaMap() -- instance of the bake element class
-	be2.outputSzX =be2.outputSzY = size --set the size of the baked map --specifythe full file path, name and type:
-	be2.fileType = ("E:/_alpha.png")
-	be2.fileName = filenameFromPath be2.fileType
-	be2.filterOn = true --enable filtering
-	--be2.shadowsOn =true --enable shadows
-	be2.enabled = true --enable baking --Preparing theobjectfor baking:
 	obj.INodeBakeProperties.addBakeElement be1 --add first element
 	--obj.INodeBakeProperties.addBakeElement be2 --add second element
 	obj.INodeBakeProperties.bakeEnabled = true --enabling baking
 	obj.INodeBakeProperties.bakeChannel = 2 --channel to bake
-	obj.INodeBakeProperties.nDilations = 1 --expand the texturea bit
+	obj.INodeBakeProperties.nDilations = 2 --expand the texturea bit
 	select obj --we are baking the selection, so we select the object --Call the renderer to bake both elements:
 	render rendertype:#bakeSelected outputSize:[size,size] vfb:off
 	obj.INodeBakeProperties.RemoveBakeElement be1
@@ -93,7 +90,7 @@ fn BakeDiffuseAndAlpha obj size pName=
 	
 )--end fn
 
-fn BackTexture pName=
+fn BackTexture pName bitmapSize=
 (
 	renderers.current.output_on = false
 	renderers.current.imageSampler_type = 3
@@ -101,24 +98,23 @@ fn BackTexture pName=
 	renderers.current.gi_on = false
 	for OBJ in Geometry do(
 		
-		BakeDiffuseAndAlpha OBJ 2048 pName
+		BakeDiffuseAndAlpha OBJ bitmapSize pName
 	)
+	print ("Finished " + "BackTexture")
+	return (pName + "texture.png")
 )
 
-fn ExportMeshs pName=
+fn ExportMeshs pName zipFilename=
 (
 	local theClasses = exporterPlugin.classes
 	local _objIdx = findItem theClasses ObjExp
 	local objPath = pName + "\\OBJ\\export.obj"
-	local packagePath = pName + "\\OBJ\\export_obj.zip"
 	-- with *.OBJ export dialog
 	--exportFile (pName) using:theClasses[_objIdx]
 	-- without *.OBJ export dialog
-	local z7Path = pName + "\\7z.exe"
-	local filesPath = pName + "\\OBJ\\*.*"
 	exportFile objPath #noprompt selectedOnly:off using:theClasses[_objIdx]
-	HiddenDOSCommand (z7Path + " a -tzip " + packagePath + " " + filesPath)
-	return packagePath
+	print ("Finished " + "ExportObjects")
+	return objPath
 )
 
 fn AttachMeshs =
@@ -139,9 +135,18 @@ fn AttachMeshs =
 	(
 		 polyop.attach meshNames[1] meshNames[i]
 	)
+	print ("Finished " + "AttachMeshs")
 )
 
-fn ExportESS pName=
+fn ChangeToVray =
+(
+	for r in 1 to (rendererClass.classes).count where matchPattern ((rendererClass.classes)[r] as string) pattern:"V_Ray_Adv*" do
+	(
+		Renderers.Production = RendererClass.Classes[r]()
+	)	
+)
+
+fn ExportESS pName zipFilename=
 (
 	max select all
 	local essPath = pName + "\\ESS\\export.ess"
@@ -149,33 +154,50 @@ fn ExportESS pName=
 	renderers.current.UseRelativePath = false
 	renderers.current.ExportSelection = true
 	if renderers.current.export_ess(essPath) then print "Exported ESS."
-	renderers.current = V_Ray_Adv_3_60_03()
+	--renderers.current = V_Ray_Adv_3_60_03()
+	ChangeToVray()
 	
 	local erPath = pName + "\\ElaraSDK\\bin\\er.exe"
-	local packagePath = pName + "\\ESS\\export_ess.zip"
+	local packagePath = pName + "\\ESS\\" + zipFilename + "_ess.zip"
 	HiddenDOSCommand (erPath + " -make_package " + essPath + " " + packagePath)
+	print ("Finished " + "ExportESS")
 	return packagePath
 )
 
 fn ReadMaxScene pName = 
 (
 	resetMaxFile #noprompt
+	units.SystemScale = 1
 	units.displaytype = #metric
 	units.MetricType = #Millimeters
 	units.SystemType = #Millimeters
+	setVRaySilentMode()
 	
-	loadMaxFile pName useFileUnits:false quiet:true
+	loadMaxFile pName useFileUnits:false quiet:true allowPrompts:false missingExtFilesAction:#abort missingDLLsAction:#abort missingXRefsAction:#abort
+	
+	print ("Finished " + "ReadMaxScene")
 )
 
-fn UploadESSAndObj essPack objPack =
+fn UploadESSAndObj essPack objPath texPath topTexPath x y z errorID taskID=
 (
-	local uplocalCommand = ("UploadESSAndObj " + essPack + " " + objPack)
-	print uplocalCommand
-	HiddenDOSCommand uplocalCommand
+	local uplocalCommand = "UploadESSAndObj "
+	uplocalCommand += (essPack + " ")
+	uplocalCommand += (objPath + " ")
+	uplocalCommand += (texPath + " ")
+	uplocalCommand += (topTexPath + " ")
+	uplocalCommand += ((x as string) + " ")
+	uplocalCommand += ((y as string) + " ")
+	uplocalCommand += ((z as string) + " ")
+	uplocalCommand += (errorID as string)
+	uplocalCommand += (taskID as string)
+	
+	DOSCommand uplocalCommand
+	print ("Finished " + "UploadESSAndObj")
 )
 
-fn CheckScene =
+fn CheckScene taskID =
 (
+	print ("Checking Scene")
 	max select all
 	ungroup selection
 	local helperObjs = #()
@@ -184,25 +206,98 @@ fn CheckScene =
 		append helperObjs o
 	)
 	delete helperObjs
+	
+	if Geometry.count > 25 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" 0 0 0 2 taskID
+		return false
+	)
+	
+	local numfaces = 0
+	for OBJ in Geometry do(
+		numfaces += OBJ.mesh.numfaces
+	)
+	
+	if numfaces > 2000000 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" 0 0 0 6 taskID
+		return false
+	)
+	
+	for i in sceneMaterials do 
+	(
+		if (i.category != #standard) and (i.category != #VRay) then
+		(
+			UploadESSAndObj "0" "0" "0" "0" 0 0 0 8 taskID
+			return false
+		)
+	)
+	
+	return true
 )
 
-fn AlignScene =
+fn RenderTopView width height=
+(
+)
+
+fn GetBoundbox =
+(
+	local myBox = Box3()
+	for obj in Geometry do
+	(
+		local tMin = (nodeLocalBoundingBox obj)[1]
+		local tMax = (nodeLocalBoundingBox obj)[2]
+		expandToInclude myBox tMin
+		expandToInclude myBox tMax
+	)
+	return [myBox.max.x - myBox.min.x, myBox.max.y - myBox.min.y, myBox.max.z - myBox.min.z]
+)
+
+fn AlignScene topPngPath =
 (
 	max select all
 	bigGroup = group selection
 	bigGroup.pos = [0, 0, 0]
+	
+	local mySize = GetBoundbox()
+	local myCam = Freecamera()
+	myCam.pos = [0, 0, 3000]
+	myCam.fov = 53.13
+
+	myCam.baseObject.targetDistance = mySize.x
+	
+	renderWidth = mySize.x * 0.2
+	renderHeight = mySize.y * 0.2
+	
+	ChangeToVray()
+	pngio.setAlpha true;
+	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[mySize.x * 0.2,mySize.y * 0.2] outputfile:topPngPath
+	print ("Finished " + "AlignScene")	
+	return mySize
+	
 )
 
-fn CallMeshTool maxScenename meshToolPath=
+fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 (
+	local zipFilename = getFilenameFile zipPath
+	if zipPath == "" then
+	(
+		zipFilename = "export"
+	)
+	
 	ReadMaxScene maxScenename
-	CheckScene()
-	AlignScene()
-	local essPack = ExportESS meshToolPath
-	OptimizeMesh 5000
+	
+	if CheckScene taskID == false then return false
+	
+	local top_view_png = meshToolPath + "/MAP/top_view.png"
+	local sceneSize = AlignScene top_view_png
+	local essPack = ExportESS meshToolPath zipFilename
+	OptimizeMesh 4000
 	AttachMeshs()
 	AutoUnwrapUV()
-	BackTexture (meshToolPath + "/OBJ/")
-	local objPack = ExportMeshs meshToolPath
-	UploadESSAndObj essPack objPack
+	local texPath = BackTexture (meshToolPath + "/OBJ/") 1024
+	local objPath = ExportMeshs meshToolPath zipFilename
+	UploadESSAndObj essPack objPath texPath top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
+	
+	--copyFile objPack ("E:/OBJS/" + (filenameFromPath objPack))
 )

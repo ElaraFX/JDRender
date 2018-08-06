@@ -92,10 +92,6 @@ fn BakeDiffuseAndAlpha obj size pName=
 
 fn BackTexture pName bitmapSize=
 (
-	renderers.current.output_on = false
-	renderers.current.imageSampler_type = 3
-	renderers.current.progressive_maxSamples = 4
-	renderers.current.gi_on = false
 	for OBJ in Geometry do(
 		
 		BakeDiffuseAndAlpha OBJ bitmapSize pName
@@ -143,7 +139,12 @@ fn ChangeToVray =
 	for r in 1 to (rendererClass.classes).count where matchPattern ((rendererClass.classes)[r] as string) pattern:"V_Ray_Adv*" do
 	(
 		Renderers.Production = RendererClass.Classes[r]()
-	)	
+	)
+	
+	renderers.current.output_on = false
+	renderers.current.imageSampler_type = 3
+	renderers.current.progressive_maxSamples = 4
+	renderers.current.gi_on = false
 )
 
 fn ExportESS pName zipFilename=
@@ -158,7 +159,7 @@ fn ExportESS pName zipFilename=
 	ChangeToVray()
 	
 	local erPath = pName + "\\ElaraSDK\\bin\\er.exe"
-	local packagePath = pName + "\\ESS\\" + zipFilename + "_ess.zip"
+	local packagePath = pName + "\\ESS\\export_ess.zip"
 	HiddenDOSCommand (erPath + " -make_package " + essPath + " " + packagePath)
 	print ("Finished " + "ExportESS")
 	return packagePath
@@ -188,26 +189,26 @@ fn UploadESSAndObj essPack objPath texPath topTexPath x y z errorID taskID=
 	uplocalCommand += ((x as string) + " ")
 	uplocalCommand += ((y as string) + " ")
 	uplocalCommand += ((z as string) + " ")
-	uplocalCommand += (errorID as string)
+	uplocalCommand += ((errorID as string) + " ")
 	uplocalCommand += (taskID as string)
 	
 	DOSCommand uplocalCommand
 	print ("Finished " + "UploadESSAndObj")
+	resetMaxFile #noprompt
 )
 
 fn CheckScene taskID =
 (
 	print ("Checking Scene")
 	max select all
-	ungroup selection
+	explodeGroup selection
 	local helperObjs = #()
 	for o in objects where superclassof o != GeometryClass do
 	(
 		append helperObjs o
 	)
 	delete helperObjs
-	
-	if Geometry.count > 25 then
+	if Geometry.count > 100 then
 	(
 		UploadESSAndObj "0" "0" "0" "0" 0 0 0 2 taskID
 		return false
@@ -236,11 +237,7 @@ fn CheckScene taskID =
 	return true
 )
 
-fn RenderTopView width height=
-(
-)
-
-fn GetBoundbox =
+fn GetSceneSize =
 (
 	local myBox = Box3()
 	for obj in Geometry do
@@ -259,19 +256,19 @@ fn AlignScene topPngPath =
 	bigGroup = group selection
 	bigGroup.pos = [0, 0, 0]
 	
-	local mySize = GetBoundbox()
+	local mySize = GetSceneSize()
 	local myCam = Freecamera()
 	myCam.pos = [0, 0, 3000]
 	myCam.fov = 53.13
-
+	myCam.orthoProjection = true
 	myCam.baseObject.targetDistance = mySize.x
 	
-	renderWidth = mySize.x * 0.2
-	renderHeight = mySize.y * 0.2
+	renderWidth = mySize.x
+	renderHeight = mySize.y
 	
 	ChangeToVray()
 	pngio.setAlpha true;
-	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[mySize.x * 0.2,mySize.y * 0.2] outputfile:topPngPath
+	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[mySize.x,mySize.y] outputfile:topPngPath
 	print ("Finished " + "AlignScene")	
 	return mySize
 	
@@ -298,6 +295,7 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 	local texPath = BackTexture (meshToolPath + "/OBJ/") 1024
 	local objPath = ExportMeshs meshToolPath zipFilename
 	UploadESSAndObj essPack objPath texPath top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
-	
+	--UploadESSAndObj "" "" "" top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
 	--copyFile objPack ("E:/OBJS/" + (filenameFromPath objPack))
+	
 )

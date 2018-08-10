@@ -145,6 +145,7 @@ fn ChangeToVray =
 	renderers.current.imageSampler_type = 3
 	renderers.current.progressive_maxSamples = 4
 	renderers.current.gi_on = false
+	renderers.current.options_displacement = false
 )
 
 fn ExportESS pName zipFilename=
@@ -227,7 +228,7 @@ fn CheckScene taskID =
 	
 	for i in sceneMaterials do 
 	(
-		if (i.category != #standard) and (i.category != #VRay) then
+		if (i.category != #standard) and (i.category != #VRay) and (i.category != #2D) then
 		(
 			UploadESSAndObj "0" "0" "0" "0" 0 0 0 8 taskID
 			return false
@@ -276,26 +277,34 @@ fn AlignScene topPngPath =
 
 fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 (
-	local zipFilename = getFilenameFile zipPath
-	if zipPath == "" then
+	try
 	(
-		zipFilename = "export"
+		local zipFilename = getFilenameFile zipPath
+		if zipPath == "" then
+		(
+			zipFilename = "export"
+		)
+		
+		ReadMaxScene maxScenename
+		
+		if CheckScene taskID == false then return false
+		
+		local top_view_png = meshToolPath + "/MAP/top_view.png"
+		local sceneSize = AlignScene top_view_png
+		local essPack = ExportESS meshToolPath zipFilename
+		OptimizeMesh 4000
+		AttachMeshs()
+		AutoUnwrapUV()
+		local texPath = BackTexture (meshToolPath + "/OBJ/") 1024
+		local objPath = ExportMeshs meshToolPath zipFilename
+		UploadESSAndObj essPack objPath texPath top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
+		--UploadESSAndObj "" "" "" top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
+		--copyFile objPack ("E:/OBJS/" + (filenameFromPath objPack))
 	)
-	
-	ReadMaxScene maxScenename
-	
-	if CheckScene taskID == false then return false
-	
-	local top_view_png = meshToolPath + "/MAP/top_view.png"
-	local sceneSize = AlignScene top_view_png
-	local essPack = ExportESS meshToolPath zipFilename
-	OptimizeMesh 4000
-	AttachMeshs()
-	AutoUnwrapUV()
-	local texPath = BackTexture (meshToolPath + "/OBJ/") 1024
-	local objPath = ExportMeshs meshToolPath zipFilename
-	UploadESSAndObj essPack objPath texPath top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
-	--UploadESSAndObj "" "" "" top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
-	--copyFile objPack ("E:/OBJS/" + (filenameFromPath objPack))
+	catch
+	(
+		print "Find Error!"
+		print getCurrentException()
+	)
 	
 )

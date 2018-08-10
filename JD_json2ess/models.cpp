@@ -251,27 +251,30 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 				std::string diffuse_tex, bump_tex;
 				if (model["customModels"][i].isMember("material"))
 				{
-					if (model["customModels"][i]["material"].isMember("diffuse"))
+					if (model["customModels"][i]["material"].isMember("id"))
 					{
-						int c = model["customModels"][i]["material"]["diffuse"].asInt();
-						mat.diffuse_color[0] = float((c / 256 / 256) % 256) / 255.0f;
-						mat.diffuse_color[1] = float((c / 256) % 256) / 255.0f;
-						mat.diffuse_color[2] = float(c % 256) / 255.0f;
-					}
-					if (model["customModels"][i]["material"].isMember("specular"))
-					{
-						int c = model["customModels"][i]["material"]["specular"].asInt();
-						mat.diffuse_color[0] = float((c / 256 / 256) % 256) / 255.0f;
-						mat.diffuse_color[1] = float((c / 256) % 256) / 255.0f;
-						mat.diffuse_color[2] = float(c % 256) / 255.0f;
-					}
-					if (model["customModels"][i]["material"].isMember("glossiness"))
-					{
-						mat.glossiness = model["customModels"][i]["material"]["glossiness"].asFloat();
-					}
-					if (model["customModels"][i]["material"].isMember("ior"))
-					{
-						mat.specular_fresnel = model["customModels"][i]["material"]["ior"].asFloat();
+						if (model["customModels"][i]["material"].isMember("diffuse"))
+						{
+							int c = model["customModels"][i]["material"]["diffuse"].asInt();
+							mat.diffuse_color[0] = float((c / 256 / 256) % 256) / 255.0f;
+							mat.diffuse_color[1] = float((c / 256) % 256) / 255.0f;
+							mat.diffuse_color[2] = float(c % 256) / 255.0f;
+						}
+						if (model["customModels"][i]["material"].isMember("specular"))
+						{
+							int c = model["customModels"][i]["material"]["specular"].asInt();
+							mat.diffuse_color[0] = float((c / 256 / 256) % 256) / 255.0f;
+							mat.diffuse_color[1] = float((c / 256) % 256) / 255.0f;
+							mat.diffuse_color[2] = float(c % 256) / 255.0f;
+						}
+						if (model["customModels"][i]["material"].isMember("glossiness"))
+						{
+							mat.glossiness = model["customModels"][i]["material"]["glossiness"].asFloat();
+						}
+						if (model["customModels"][i]["material"].isMember("ior"))
+						{
+							mat.specular_fresnel = model["customModels"][i]["material"]["ior"].asFloat();
+						}
 					}
 				}
 				

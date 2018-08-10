@@ -10,7 +10,7 @@
 #include "setting.h"
 
 
-// 按照特定字符串降json文件读入并且分割
+// 按照特定字符串将json文件读入并且分割
 // 按照京东要求是需要分割为两个json
 void read_and_split_json_file(const char *filename, std::string &json1, std::string &json2, std::string split)
 {
@@ -43,51 +43,71 @@ void read_and_split_json_file(const char *filename, std::string &json1, std::str
 	json2 = buf2.str();  
 }
 
+int getCameraNumber()
+{
+	return getCameraNum();
+}
+
+int getCameraName(int num, char *out)
+{
+	return getCameraNameStr(num, out);
+}
+
 bool translateJson(const char* json_file_path, const char* out_file_path)
 {
 	// initial
-	EH_Context *pContext = EH_create();
-	EH_ExportOptions option;
-	option.base85_encoding = true;
-	option.left_handed = false;
-	EH_begin_export(pContext, out_file_path, &option);
-	createDefaultMaterial(pContext);
+	try {
+		EH_Context *pContext = EH_create();
+		EH_ExportOptions option;
+		option.base85_encoding = true;
+		option.left_handed = false;
+		EH_begin_export(pContext, out_file_path, &option);
+		createDefaultMaterial(pContext);
 
-	// read and translate json
-	std::string json1, json2, split;
-	read_and_split_json_file(json_file_path, json1, json2, std::string("|"));
-	Json::Value root1, root2;
-	Json::Reader reader;
-	if(!reader.parse(json1, root1))
+		// read and translate json
+		std::string json1, json2, split;
+		read_and_split_json_file(json_file_path, json1, json2, std::string("|"));
+		Json::Value root1, root2;
+		Json::Reader reader;
+		if(!reader.parse(json1, root1))
+		{
+			std::cout<<"return json1 error."<<std::endl;
+			return false;
+		}
+
+		if(!reader.parse(json2, root2))
+		{
+			std::cout<<"return json2 error."<<std::endl;
+			return false;
+		}
+
+		getModelList(root2);
+		getIncludedModels(root1, pContext);
+		getCustomModels(root1, pContext);
+		getLight(root1, pContext);
+		getGlobalSettings(root1, pContext);
+		getEnvironment(root1, pContext);
+		getGlobalCameras(root1, pContext);
+		setParameter(pContext);
+
+		EH_end_export(pContext);
+		EH_delete(pContext);
+		return true;
+	}
+	catch (...)
 	{
-		std::cout<<"return json1 error."<<std::endl;
 		return false;
 	}
-
-	if(!reader.parse(json2, root2))
-	{
-		std::cout<<"return json2 error."<<std::endl;
-		return false;
-	}
-
-	getModelList(root2);
-	getIncludedModels(root1, pContext);
-	getCustomModels(root1, pContext);
-	getLight(root1, pContext);
-	getGlobalSettings(root1, pContext);
-	getEnvironment(root1, pContext);
-	getGlobalCameras(root1, pContext);
-	setParameter(pContext);
-
-	EH_end_export(pContext);
-	EH_delete(pContext);
-	return true;
 }
-
-int main()
-{
-	translateJson("D:/work/JDRender/JD_json2ess/complex2.json", "d:/jd1.ess");
-	system("pause");
-	return 1;
-}
-
+////
+//int main()
+//{
+//	if (!translateJson("D:/work/JDRender/JD_json2ess/complex2.json", "d:/jd1.ess"))
+//	{
+//		printf("json parse false!\n");
+//	}
+//	char xx[128] = "";
+//	getCameraName(0, xx);
+//	system("pause");
+//	return 1;
+//}

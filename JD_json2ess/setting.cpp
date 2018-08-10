@@ -129,24 +129,24 @@ void getGlobalCameras(Json::Value &cameras, EH_Context *ctx)
 			eh_cam.image_width = g_s.eh_cam.image_width * 6;
 			for (unsigned int i = 0; i < cameras["camera"].size(); i++)
 			{
-				if (cameras["camera"][0].isMember("fov"))
+				if (cameras["camera"][i].isMember("fov"))
 				{
-					eh_cam.fov = cameras["camera"][0]["fov"].asFloat() / 180 * EI_PI;
+					eh_cam.fov = cameras["camera"][i]["fov"].asFloat() / 180 * EI_PI;
 				}
-				if (cameras["camera"][0].isMember("far"))
+				if (cameras["camera"][i].isMember("far"))
 				{
 					eh_cam.far_clip = cameras["camera"][0]["far"].asFloat();
 				}
-				if (cameras["camera"][0].isMember("aspect"))
+				if (cameras["camera"][i].isMember("aspect"))
 				{
-					eh_cam.aspect = cameras["camera"][0]["aspect"].asFloat();
+					eh_cam.aspect = cameras["camera"][i]["aspect"].asFloat();
 				}
 				float mat[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-				if (cameras["camera"][0].isMember("matrixWorld"))
+				if (cameras["camera"][i].isMember("matrixWorld"))
 				{
-					for (unsigned int j = 0; j < cameras["camera"][0]["matrixWorld"].size() && j < 16; j++)
+					for (unsigned int j = 0; j < cameras["camera"][i]["matrixWorld"].size() && j < 16; j++)
 					{
-						mat[j] = cameras["camera"][0]["matrixWorld"][j].asFloat();
+						mat[j] = cameras["camera"][i]["matrixWorld"][j].asFloat();
 					}
 				}
 				eiMatrix c_tran = ei_matrix(
@@ -176,4 +176,27 @@ void setParameter(EH_Context *ctx)
 	render_op.quality = g_s.quality;
 	EH_set_options_name(ctx, "GlobalOptionsName");
 	EH_set_render_options(ctx, &render_op);
+}
+
+int getCameraNum()
+{
+	return g_s.camera_number;
+}
+
+int getCameraNameStr(int num, char *out)
+{
+	if (num < g_s.camera_number)
+	{
+		if (g_s.eh_cam.cubemap_render)
+		{
+			sprintf(out, "%s%d", CAMERA_NAME, num);
+		}
+		else
+		{
+			memcpy(out, "GlobalCameraInstanceName", 24);
+			out[24] = '\0';
+		}
+		return strlen(out);
+	}
+	return 0;
 }

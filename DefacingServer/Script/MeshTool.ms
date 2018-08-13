@@ -136,6 +136,7 @@ fn AttachMeshs =
 
 fn ChangeToVray =
 (
+	renderers.current = Default_Scanline_Renderer()
 	for r in 1 to (rendererClass.classes).count where matchPattern ((rendererClass.classes)[r] as string) pattern:"V_Ray_Adv*" do
 	(
 		Renderers.Production = RendererClass.Classes[r]()
@@ -146,6 +147,12 @@ fn ChangeToVray =
 	renderers.current.progressive_maxSamples = 4
 	renderers.current.gi_on = false
 	renderers.current.options_displacement = false
+	
+	rendOutputFilename = ""
+	rendSaveFile = false
+	
+	local re = maxOps.GetCurRenderElementMgr() -- get the current render element manager
+	re.removeallrenderelements() -- remove all renderelements
 )
 
 fn ExportESS pName zipFilename=
@@ -202,13 +209,28 @@ fn CheckScene taskID =
 (
 	print ("Checking Scene")
 	max select all
+	
+	if selection.count == 0 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" 0 0 0 9 taskID
+		return false
+	)
+	
 	explodeGroup selection
+	
 	local helperObjs = #()
-	for o in objects where superclassof o != GeometryClass do
+	for o in objects where ((superclassof o != GeometryClass) or (o.isHidden)) do
 	(
 		append helperObjs o
 	)
 	delete helperObjs
+	
+	if Geometry.count == 0 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" 0 0 0 9 taskID
+		return false
+	)
+	
 	if Geometry.count > 100 then
 	(
 		UploadESSAndObj "0" "0" "0" "0" 0 0 0 2 taskID
@@ -291,12 +313,12 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 		
 		local top_view_png = meshToolPath + "/MAP/top_view.png"
 		local sceneSize = AlignScene top_view_png
-		local essPack = ExportESS meshToolPath zipFilename
 		OptimizeMesh 4000
 		AttachMeshs()
 		AutoUnwrapUV()
 		local texPath = BackTexture (meshToolPath + "/OBJ/") 1024
 		local objPath = ExportMeshs meshToolPath zipFilename
+		local essPack = ExportESS meshToolPath zipFilename
 		UploadESSAndObj essPack objPath texPath top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
 		--UploadESSAndObj "" "" "" top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
 		--copyFile objPack ("E:/OBJS/" + (filenameFromPath objPack))

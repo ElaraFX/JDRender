@@ -219,7 +219,8 @@ fn CheckScene taskID =
 	explodeGroup selection
 	
 	local helperObjs = #()
-	for o in objects where ((superclassof o != GeometryClass) or (o.isHidden)) do
+	local hideFrozen = maxOps.hideFrozenObjects
+	for o in objects where ((superclassof o != GeometryClass) or (o.isHidden) or (hideFrozen and o.isFrozen) or not (canconvertto o Editable_Mesh)) do
 	(
 		append helperObjs o
 	)
@@ -286,12 +287,20 @@ fn AlignScene topPngPath =
 	myCam.orthoProjection = true
 	myCam.baseObject.targetDistance = mySize.x
 	
-	renderWidth = mySize.x
-	renderHeight = mySize.y
+	local maxEdge = 1024
+	if mySize.x > mySize.y then
+	(
+		renderWidth = maxEdge
+		renderHeight = maxEdge * mySize.y / mySize.x
+	)else
+	(
+		renderWidth = maxEdge * mySize.x / mySize.y
+		renderHeight = maxEdge
+	)
 	
 	ChangeToVray()
 	pngio.setAlpha true;
-	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[mySize.x,mySize.y] outputfile:topPngPath
+	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[renderWidth,renderHeight] outputfile:topPngPath
 	print ("Finished " + "AlignScene")	
 	return mySize
 	
@@ -301,6 +310,7 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 (
 	try
 	(
+		
 		local zipFilename = getFilenameFile zipPath
 		if zipPath == "" then
 		(
@@ -309,7 +319,10 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 		
 		ReadMaxScene maxScenename
 		
-		if CheckScene taskID == false then return false
+		if CheckScene taskID == false then
+		(
+			return "MeshTool Finished Init"
+		)
 		
 		local top_view_png = meshToolPath + "/MAP/top_view.png"
 		local sceneSize = AlignScene top_view_png
@@ -326,7 +339,12 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 	catch
 	(
 		print "Find Error!"
-		print getCurrentException()
+		format "*** % ***\n" (getCurrentException())
+		resetMaxFile #noprompt
+		UploadESSAndObj "0" "0" "0" "0" 0 0 0 10 taskID
 	)
-	
+	print "MeshTool Finished Init"
 )
+uiaccessor.closedialog (windows.getchildhwnd 0 "MAXScript Listener")[1]
+renderSceneDialog.close()
+print "MeshTool Finished Init"

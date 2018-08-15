@@ -656,6 +656,8 @@ struct EH_Sun
  */
 EH_API void EH_set_sun(EH_Context *ctx, const EH_Sun *sun);
 
+EH_API void EH_set_sun_with_matrix(EH_Context *ctx, const EH_Sun *sun, float *mat);
+
 /** The callback to color buffer during rendering.
 	For users to better to deal with color such as exposure, tone mapping and so on,
 	color_data in callback WON'T clamp to range of [0,1].

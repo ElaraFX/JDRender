@@ -2,7 +2,8 @@
 #include "models.h"
 
 
-ModelMap g_model_map;
+ElementMap g_model_map;
+ElementMap g_texture_map;
 EH_Material default_material;
 
 
@@ -24,8 +25,24 @@ void getModelList(Json::Value &model_list)
 		{
 			if (model_list["modelInfo"][i].isMember("modelId") && model_list["modelInfo"][i].isMember("modelUrl"))
 			{
-				g_model_map.insert(ModelMap::value_type(model_list["modelInfo"][i]["modelId"].asInt(), model_list["modelInfo"][i]["modelUrl"].asString()));
+				g_model_map.insert(ElementMap::value_type(model_list["modelInfo"][i]["modelId"].asInt(), model_list["modelInfo"][i]["modelUrl"].asString()));
 				//printf("%d: %s\n", model_list["modelInfo"][i]["modelId"].asInt(), model_list["modelInfo"][i]["modelUrl"].asString().c_str());
+			}
+		}
+	}	
+}
+
+void getTextureList(Json::Value &texture_list)
+{
+	g_texture_map.clear();
+	if (texture_list.isMember("textureInfo"))
+	{
+		for (unsigned int i = 0; i < texture_list["textureInfo"].size(); i++)
+		{
+			if (texture_list["textureInfo"][i].isMember("textureId") && texture_list["textureInfo"][i].isMember("textureUrl"))
+			{
+				g_texture_map.insert(ElementMap::value_type(texture_list["textureInfo"][i]["textureId"].asInt(), texture_list["textureInfo"][i]["textureUrl"].asString()));
+				printf("%d: %s\n", texture_list["textureInfo"][i]["textureId"].asInt(), texture_list["textureInfo"][i]["textureUrl"].asString().c_str());
 			}
 		}
 	}	
@@ -49,7 +66,7 @@ void getIncludedModels(Json::Value &model, EH_Context *ctx)
 			if (model["models"][i].isMember("modelId"))
 			{
 				int modelId = model["models"][i]["modelId"].asInt();
-				ModelMap::iterator iter = g_model_map.find(modelId);
+				ElementMap::iterator iter = g_model_map.find(modelId);
 				if (iter == g_model_map.end())
 				{
 					continue;
@@ -62,12 +79,7 @@ void getIncludedModels(Json::Value &model, EH_Context *ctx)
 					mat[8], mat[9], mat[10], mat[11],
 					mat[12], mat[13], mat[14], mat[15]
 				);
-				eiMatrix mm2m = ei_matrix( /* 引用外部ESS模型的变化矩阵 */
-					0.001f, 0, 0, 0,
-					0, 0.001f, 0, 0,
-					0, 0, 0.001f, 0,
-					0, 0, 0, 1
-				);
+				
 				include_ess_mat = mm2m * y2z * l2r * include_ess_mat * l2r * y2z;
 				EH_AssemblyInstance include_inst;
 
@@ -277,17 +289,24 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 						}
 					}
 				}
-				
-				if (model["customModels"][i].isMember("diffuse_texturePath"))
+				if (model["customModels"][i].isMember("diffuse_textureId"))
 				{
-					diffuse_tex = model["customModels"][i]["diffuse_texturePath"].asString();
-					mat.diffuse_tex.filename = diffuse_tex.c_str();
+					int id = model["customModels"][i]["diffuse_textureId"].asInt();
+					ElementMap::iterator iter = g_texture_map.find(id);
+					if (iter != g_texture_map.end())
+					{
+						mat.diffuse_tex.filename = iter->second.c_str();
+					}
 				}
-				if (model["customModels"][i].isMember("bump_texturePath"))
+				if (model["customModels"][i].isMember("bump_textureId"))
 				{
-					mat.normal_bump = false;
-					bump_tex = model["customModels"][i]["bump_texturePath"].asString();
-					mat.bump_tex.filename = bump_tex.c_str();
+					int id = model["customModels"][i]["bump_textureId"].asInt();
+					ElementMap::iterator iter = g_texture_map.find(id);
+					if (iter != g_texture_map.end())
+					{
+						mat.normal_bump = false;
+						mat.bump_tex.filename = iter->second.c_str();
+					}
 				}
 				if (model["customModels"][i].isMember("bump_mult"))
 				{

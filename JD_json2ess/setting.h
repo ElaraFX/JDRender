@@ -32,5 +32,6 @@ extern void setParameter(EH_Context *ctx);
 extern void getGlobalCameras(Json::Value &cameras, EH_Context *ctx);
 extern void getGlobalSettings(Json::Value &global_settings, EH_Context *ctx);
 extern void getEnvironment(Json::Value &envi, EH_Context *ctx);
+extern void getHDRList(Json::Value &hdr_list);
 extern int getCameraNameStr(int num, char *out);
 extern int getCameraNum();

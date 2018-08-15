@@ -1,5 +1,23 @@
 #include "lights.h"
 
+ElementMap g_ies_map;
+
+void getIESList(Json::Value &ies_list)
+{
+	g_ies_map.clear();
+	if (ies_list.isMember("iesInfo"))
+	{
+		for (unsigned int i = 0; i < ies_list["iesInfo"].size(); i++)
+		{
+			if (ies_list["iesInfo"][i].isMember("iesId") && ies_list["iesInfo"][i].isMember("iesUrl"))
+			{
+				g_ies_map.insert(ElementMap::value_type(ies_list["iesInfo"][i]["iesId"].asInt(), ies_list["iesInfo"][i]["iesUrl"].asString()));
+				printf("%d: %s\n", ies_list["iesInfo"][i]["iesId"].asInt(), ies_list["iesInfo"][i]["iesUrl"].asString().c_str());
+			}
+		}
+	}	
+}
+
 void getLight(Json::Value &light, EH_Context *ctx)
 {
 	if (light.isMember("customLights"))
@@ -39,10 +57,15 @@ void getLight(Json::Value &light, EH_Context *ctx)
 				else if (light["customLights"][i]["type"].asString() == "spotlight")
 				{
 					l.type = EH_LIGHT_IES;
-					if (light["customLights"][i].isMember("ies_filePath"))
+					if (light["customLights"][i].isMember("iesId"))
 					{
-						str = light["customLights"][i]["ies_filePath"].asString();
-						l.ies_filename = str.c_str();
+						int id = light["customLights"][i]["iesId"].asInt();
+						ElementMap::iterator iter = g_ies_map.find(id);
+						if (iter == g_ies_map.end())
+						{
+							continue;
+						}
+						l.ies_filename = iter->second.c_str();
 					}
 				}
 

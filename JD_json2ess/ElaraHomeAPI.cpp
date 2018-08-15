@@ -469,6 +469,16 @@ void EH_set_sun(EH_Context *ctx, const EH_Sun *sun)
 	reinterpret_cast<EssExporter*>(ctx)->AddSun(*sun);
 }
 
+void EH_set_sun_with_matrix(EH_Context *ctx, const EH_Sun *sun, float *mat)
+{
+	if (mat)
+	{
+		eiMatrix m = ei_matrix(mat[0], mat[1], mat[2], mat[3], mat[4], mat[5], mat[6], mat[7], mat[8], 
+			mat[9], mat[10], mat[11], mat[12], mat[13], mat[14], mat[15]);
+		reinterpret_cast<EssExporter*>(ctx)->AddSun(*sun, m);
+	}
+}
+
 EI_THREAD_FUNC render_callback(void *param)
 {
 	eiRenderParameters *render_params = (eiRenderParameters *)param;

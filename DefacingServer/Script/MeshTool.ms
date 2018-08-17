@@ -20,6 +20,9 @@ fn OptimizeMesh maxFace =
 			proOpt.Calculate = on
 			proOpt.OptimizationMode = 1
 			proOpt.KeepUV = on
+			proOpt.MergePoints = on
+			proOpt.PreventFlip = on
+			proOpt.LockPoints = on
 			proOpt.VertexPercent = vp
 			mSmooth = smooth ()
 			addmodifier OBJ mSmooth
@@ -155,6 +158,20 @@ fn ChangeToVray =
 	re.removeallrenderelements() -- remove all renderelements
 )
 
+fn ChangeToElara =
+(
+	renderers.current = Elara_Renderer()
+	renderers.current.MaxSamples = 4
+	renderers.current.DiffuseDepth = 1
+	renderers.current.SumDepth = 1
+	
+	rendOutputFilename = ""
+	rendSaveFile = false
+	
+	local re = maxOps.GetCurRenderElementMgr() -- get the current render element manager
+	re.removeallrenderelements() -- remove all renderelements
+)
+
 fn ExportESS pName zipFilename=
 (
 	max select all
@@ -182,7 +199,14 @@ fn ReadMaxScene pName =
 	units.SystemType = #Millimeters
 	setVRaySilentMode()
 	
-	loadMaxFile pName useFileUnits:false quiet:true allowPrompts:false missingExtFilesAction:#abort missingDLLsAction:#abort missingXRefsAction:#abort
+	try
+	(
+		loadMaxFile pName useFileUnits:false quiet:true allowPrompts:false missingExtFilesAction:#abort missingDLLsAction:#abort missingXRefsAction:#abort
+	)
+	catch
+	(
+		print "Wrong max File!"
+	)
 	
 	print ("Finished " + "ReadMaxScene")
 )
@@ -200,9 +224,9 @@ fn UploadESSAndObj essPack objPath texPath topTexPath x y z errorID taskID=
 	uplocalCommand += ((errorID as string) + " ")
 	uplocalCommand += (taskID as string)
 	
-	DOSCommand uplocalCommand
-	print ("Finished " + "UploadESSAndObj")
 	resetMaxFile #noprompt
+	DOSCommand uplocalCommand
+	print ("Finished " + "UploadESSAndObj")	
 )
 
 fn CheckScene taskID =
@@ -263,11 +287,14 @@ fn CheckScene taskID =
 
 fn GetSceneSize =
 (
+	local clearObjs = for obj in Geometry collect obj
 	local myBox = Box3()
-	for obj in Geometry do
+	for obj in clearObjs do
 	(
-		local tMin = (nodeLocalBoundingBox obj)[1]
-		local tMax = (nodeLocalBoundingBox obj)[2]
+		local tempObj = editable_mesh name:obj.name
+		meshop.attach  tempObj obj
+		local tMin = (nodeLocalBoundingBox tempObj)[1]
+		local tMax = (nodeLocalBoundingBox tempObj)[2]
 		expandToInclude myBox tMin
 		expandToInclude myBox tMax
 	)
@@ -298,9 +325,13 @@ fn AlignScene topPngPath =
 		renderHeight = maxEdge
 	)
 	
-	ChangeToVray()
+	ChangeToElara()
+	useEnvironmentMap = off
+	backgroundColor = color 255 255 255
+	local tempLight = Omnilight multiplier:0
 	pngio.setAlpha true;
 	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[renderWidth,renderHeight] outputfile:topPngPath
+	delete tempLight
 	print ("Finished " + "AlignScene")	
 	return mySize
 	
@@ -326,12 +357,13 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 		
 		local top_view_png = meshToolPath + "/MAP/top_view.png"
 		local sceneSize = AlignScene top_view_png
+		local essPack = ExportESS meshToolPath zipFilename
 		OptimizeMesh 4000
 		AttachMeshs()
 		AutoUnwrapUV()
 		local texPath = BackTexture (meshToolPath + "/OBJ/") 1024
 		local objPath = ExportMeshs meshToolPath zipFilename
-		local essPack = ExportESS meshToolPath zipFilename
+		
 		UploadESSAndObj essPack objPath texPath top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
 		--UploadESSAndObj "" "" "" top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
 		--copyFile objPack ("E:/OBJS/" + (filenameFromPath objPack))

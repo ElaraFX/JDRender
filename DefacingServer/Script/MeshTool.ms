@@ -105,6 +105,9 @@ fn BackTexture pName bitmapSize=
 
 fn ExportMeshs pName zipFilename=
 (
+	local exportSettings = objExp.getIniName()
+	setINISetting exportSettings "Material" "UseMapPath" "1"
+	setINISetting exportSettings "Material" "MapPath" "./"
 	local theClasses = exporterPlugin.classes
 	local _objIdx = findItem theClasses ObjExp
 	local objPath = pName + "\\OBJ\\export.obj"
@@ -201,7 +204,7 @@ fn ReadMaxScene pName =
 	
 	try
 	(
-		loadMaxFile pName useFileUnits:false quiet:true allowPrompts:false missingExtFilesAction:#abort missingDLLsAction:#abort missingXRefsAction:#abort
+		loadMaxFile pName useFileUnits:false quiet:true allowPrompts:false --missingExtFilesAction:#abort missingDLLsAction:#abort missingXRefsAction:#abort
 	)
 	catch
 	(
@@ -292,7 +295,8 @@ fn GetSceneSize =
 	for obj in clearObjs do
 	(
 		local tempObj = editable_mesh name:obj.name
-		meshop.attach  tempObj obj
+		convertToPoly tempObj
+		polyop.attach  tempObj obj
 		local tMin = (nodeLocalBoundingBox tempObj)[1]
 		local tMax = (nodeLocalBoundingBox tempObj)[2]
 		expandToInclude myBox tMin
@@ -325,13 +329,13 @@ fn AlignScene topPngPath =
 		renderHeight = maxEdge
 	)
 	
-	ChangeToElara()
-	useEnvironmentMap = off
-	backgroundColor = color 255 255 255
-	local tempLight = Omnilight multiplier:0
+	ChangeToVray()
+	--useEnvironmentMap = off
+	--backgroundColor = color 255 255 255
+	--local tempLight = Omnilight multiplier:0
 	pngio.setAlpha true;
 	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[renderWidth,renderHeight] outputfile:topPngPath
-	delete tempLight
+	--delete tempLight
 	print ("Finished " + "AlignScene")	
 	return mySize
 	

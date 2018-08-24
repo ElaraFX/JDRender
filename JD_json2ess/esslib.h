@@ -84,6 +84,8 @@ public:
 	bool AddSun(const EH_Sun &sun, eiMatrix &mat);
 	void SetTexPath(std::string &path);
 	void AddAssemblyInstance(const char *name, const EH_AssemblyInstance &assembly_inst);
+	void DeclareInstanceParam(const char *name, const char *type, const char *attribute, const char *storage_class);
+	void AddCustomNode(const char *type, const char *name);
 	void AddMaterialFromEss(const EH_Material &mat, std::string matName, const char *essName);
 	void EndExport();
 };

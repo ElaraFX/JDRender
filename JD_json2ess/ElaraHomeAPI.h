@@ -565,7 +565,7 @@ struct EH_AssemblyInstance
  */
 EH_API void EH_add_assembly_instance(EH_Context *ctx, const char *name, const EH_AssemblyInstance *inst);
 
-
+EH_API void EH_declare_instance_param(EH_Context *ctx, const char *name, const char *type, const char *attribute, const char *storage_class);
 
 /** The light data for user to fill
  */
@@ -676,3 +676,6 @@ EH_API bool EH_start_render(EH_Context *ctx, const char *ess_name, bool is_inter
 /** Stop rendering
 */
 EH_API void EH_stop_render(EH_Context *ctx);
+
+// add custom node
+EH_API void EH_add_custom_node(EH_Context *ctx, const char *type, const char *name);

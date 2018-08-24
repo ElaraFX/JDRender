@@ -23,6 +23,7 @@
 const char* instanceExt = "_instance";
 const char* MAX_EXPORT_ESS_DEFAULT_INST_NAME = "mtoer_instgroup_00";
 const char* g_inst_group_name = "GlobalInstGroupName";
+const char* GLOBAL_STDELEM_SHADER_NAME = "global_stdelem_shader";
 
 //left hand to right hand matrix
 const eiMatrix l2r = ei_matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1);
@@ -68,6 +69,10 @@ std::string AddCameraData(EssWriter& writer, const EH_Camera &cam, std::string& 
 	{
 		writer.AddRef("env_shader", envName);
 	}
+
+	std::vector<std::string> aov_lists;
+	aov_lists.push_back(GLOBAL_STDELEM_SHADER_NAME);
+	writer.AddRefGroup("aov_nodes", aov_lists);
 
 	float aspect = cam.aspect;
 	if (panorama)
@@ -603,6 +608,13 @@ void EssExporter::AddAssemblyInstance(const char *name, const EH_AssemblyInstanc
 	mWriter.EndNode();
 
 	mElInstances.push_back(name);
+}
+
+void EssExporter::DeclareInstanceParam(const char *name, const char *type, const char *attribute, const char *storage_class)
+{
+	mWriter.BeginNode("instance", name);
+	mWriter.AddDeclare(type, attribute, storage_class);
+	mWriter.EndNode();
 }
 
 void EssExporter::AddMaterialFromEss(const EH_Material &mat, std::string matName, const char *essName)
@@ -1519,4 +1531,10 @@ void EssExporter::EndExport()
 void EssExporter::SetLightSamples( const int samples )
 {
 	mLightSamples = samples;
+}
+
+void EssExporter::AddCustomNode(const char *type, const char *name)
+{
+	mWriter.BeginNode(type, name);
+	mWriter.EndNode();
 }

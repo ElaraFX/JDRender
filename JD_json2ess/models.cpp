@@ -90,6 +90,19 @@ void getIncludedModels(Json::Value &model, EH_Context *ctx)
 				include_inst_name += num;
 				memcpy(include_inst.mesh_to_world, (include_ess_mat/* * inch2mm*/).m, sizeof(include_inst.mesh_to_world));
 				EH_add_assembly_instance(ctx, include_inst_name.c_str(), &include_inst); /* include_test_ess 是ESS中节点的名字不能重名 */
+				
+				// declare object_id color
+				eiColor object_id = ei_color(0, 0, 0);
+				if (model["models"][i].isMember("object_id"))
+				{
+					int c = model["models"][i]["object_id"].asInt();
+					object_id.r = float((c / 256 / 256) % 256) / 255.0f;
+					object_id.g = float((c / 256) % 256) / 255.0f;
+					object_id.b = float(c % 256) / 255.0f;
+					char color_str[256] = {'\0'};
+					sprintf(color_str, "%f %f %f", object_id.r, object_id.g, object_id.b);
+ 					EH_declare_instance_param(ctx, include_inst_name.c_str(), "color", "MaxObjectID", color_str);
+				}
 			}
 		}
 	}
@@ -336,6 +349,19 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 				inst.mtl_names[0] = mat_name;
 				memcpy(inst.mesh_to_world, m_tran.m, sizeof(inst.mesh_to_world));
 				EH_add_mesh_instance(ctx, inst_name, &inst);
+
+				// declare object_id color
+				eiColor object_id = ei_color(0, 0, 0);
+				if (model["customModels"][i].isMember("object_id"))
+				{
+					int c = model["customModels"][i]["object_id"].asInt();
+					object_id.r = float((c / 256 / 256) % 256) / 255.0f;
+					object_id.g = float((c / 256) % 256) / 255.0f;
+					object_id.b = float(c % 256) / 255.0f;
+					char color_str[256] = {'\0'};
+					sprintf(color_str, "%f %f %f", object_id.r, object_id.g, object_id.b);
+ 					EH_declare_instance_param(ctx, inst_name, "color", "MaxObjectID", color_str);
+				}
 			}
 		}
 	}

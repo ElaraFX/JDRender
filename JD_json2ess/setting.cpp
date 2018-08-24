@@ -1,6 +1,8 @@
 #include "setting.h"
 
 
+#define GLOBAL_STDELEM_SHADER_NAME "global_stdelem_shader"
+
 GlobalSettings g_s;
 ElementMap g_hdr_map;
 
@@ -126,6 +128,7 @@ void getGlobalCameras(Json::Value &cameras, EH_Context *ctx)
 {
 	if (cameras.isMember("camera"))
 	{
+		EH_add_custom_node(ctx, "max_stdelem", GLOBAL_STDELEM_SHADER_NAME);
 		// get default camera
 		if (g_s.eh_cam.cubemap_render == false && cameras["camera"].size() > 0)
 		{

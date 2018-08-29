@@ -80,7 +80,7 @@ void getIncludedModels(Json::Value &model, EH_Context *ctx)
 					mat[12], mat[13], mat[14], mat[15]
 				);
 				
-				include_ess_mat = mm2m * y2z * l2r * include_ess_mat * l2r * y2z;
+				include_ess_mat = y2z * l2r * include_ess_mat * l2r * y2z;
 				EH_AssemblyInstance include_inst;
 
 				include_inst.filename = (iter->second).c_str(); /* 需要包含的ESS */
@@ -336,6 +336,7 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 					mat.diffuse_tex.offset_v = model["customModels"][i]["offset"]["y"].asFloat();
 				}
 				char mat_name[32] = "";
+				mat.backface_cull = true;
 				sprintf(mat_name, "%s_%d", MAT_NAME, i);
 				EH_add_vray_material(ctx, mat_name, &mat);
 

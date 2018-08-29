@@ -105,7 +105,7 @@ bool translateJson(const char* json_file_path, const char* out_file_path)
 //
 int main()
 {
-	if (!translateJson("D:/work/JDRender/JD_json2ess/complex2.json", "d:/jd1.ess"))
+	if (!translateJson("D:/work/JDRender/JD_json2ess/new1.json", "d:/jd1.ess"))
 	{
 		printf("json parse false!\n");
 	}

@@ -105,7 +105,7 @@ void getEnvironment(Json::Value &envi, EH_Context *ctx)
 				mat[8], mat[9], mat[10], mat[11],
 				mat[12], mat[13], mat[14], mat[15]
 				);
-			s_tran = mm2m * y2z * l2r * s_tran * l2r * y2z;
+			s_tran = y2z * l2r * s_tran * l2r * y2z;
 
 			float color[3] = {0, 0, 0};
 			if (envi["environmental"].isMember("sun_color"))

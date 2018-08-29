@@ -793,23 +793,29 @@ void TranslateIES(EssWriter& writer, const EH_Light &light, const std::string &l
 	std::string web_filename = light.ies_filename;
 	const eiVector color = ei_vector(light.light_color[0], light.light_color[1], light.light_color[2]);
 
-	writer.BeginNode("std_light_filter", filterName);
-		writer.AddBool("use_near_atten", false);
-		writer.AddScalar("near_start", 140.0f);
-		writer.AddScalar("near_stop", 140.0f);
-		writer.AddBool("use_far_atten", false);
-		writer.AddScalar("far_start", 80.0f);
-		writer.AddScalar("far_stop", 200.0f);
-		writer.AddBool("use_web_dist", true);
-		writer.AddToken("web_filename", web_filename);
-		writer.AddScalar("web_scale", 0.000029f);
-	writer.EndNode();
+	if (!web_filename.empty())
+	{
+		writer.BeginNode("std_light_filter", filterName);
+			writer.AddBool("use_near_atten", false);
+			writer.AddScalar("near_start", 140.0f);
+			writer.AddScalar("near_stop", 140.0f);
+			writer.AddBool("use_far_atten", false);
+			writer.AddScalar("far_start", 80.0f);
+			writer.AddScalar("far_stop", 200.0f);
+			writer.AddBool("use_web_dist", true);
+			writer.AddToken("web_filename", web_filename);
+			writer.AddScalar("web_scale", 0.000029f);
+		writer.EndNode();
+	}
 
 	writer.BeginNode("pointlight", lightName);
 		writer.AddScalar("intensity", light.intensity);
 		writer.AddColor("color", color);
-		writer.AddRef("shader", filterName);
 		writer.AddInt("samples", samples);
+		if (!web_filename.empty())
+		{
+			writer.AddRef("shader", filterName);
+		}
 	writer.EndNode();
 }
 
@@ -1146,6 +1152,19 @@ std::string AddVrayMaterial(EssWriter& writer, const EH_Vray_Material& mat, std:
 	writer.AddScalar("reflection_ior", mat.specular_fresnel);
 	writer.EndNode();
 
+	std::string max_input_mtl_name;
+	if (mat.backface_cull)
+	{
+		max_input_mtl_name = matName + "backface_shader";
+		writer.BeginNode( "backface_cull", max_input_mtl_name );
+		writer.LinkParam( "material", ei_standard_node, "result" );
+		writer.EndNode();
+	}
+	else
+	{
+		max_input_mtl_name = ei_standard_node;
+	}
+
 	std::string result_node = matName + "_result";
 
 	if (g_check_normal)
@@ -1155,7 +1174,7 @@ std::string AddVrayMaterial(EssWriter& writer, const EH_Vray_Material& mat, std:
 	else
 	{
 		writer.BeginNode("max_result", result_node);
-		writer.LinkParam("input", ei_standard_node, "result");
+		writer.LinkParam("input", max_input_mtl_name, "result");
 	}	
 	writer.EndNode();
 

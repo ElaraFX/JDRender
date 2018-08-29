@@ -378,6 +378,7 @@ struct EH_Texture
 struct EH_Vray_Material
 {
 	int brdf_type;
+	bool backface_cull;			/**< Use backface cull? */
 
 	/* Diffuse layer */
 	EH_RGB diffuse_color;		/**< Diffuse color, Range: [0, inf), default: (1 1 1) */  
@@ -396,6 +397,7 @@ struct EH_Vray_Material
 	bool normal_bump;			/**< The bump texture is actually a normal map? */
 	EH_Vray_Material() :
 		brdf_type(1),
+		backface_cull(false),
 		roughness(0.0f),
 		glossiness(0.0f),
 		specular_fresnel(1.5f),

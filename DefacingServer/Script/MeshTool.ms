@@ -214,12 +214,13 @@ fn ReadMaxScene pName =
 	print ("Finished " + "ReadMaxScene")
 )
 
-fn UploadESSAndObj essPack objPath texPath topTexPath x y z errorID taskID=
+fn UploadESSAndObj essPack objPath texPath mtlPath topTexPath x y z errorID taskID=
 (
 	local uplocalCommand = "UploadESSAndObj "
 	uplocalCommand += (essPack + " ")
 	uplocalCommand += (objPath + " ")
 	uplocalCommand += (texPath + " ")
+	uplocalCommand += (mtlPath + " ")
 	uplocalCommand += (topTexPath + " ")
 	uplocalCommand += ((x as string) + " ")
 	uplocalCommand += ((y as string) + " ")
@@ -230,62 +231,6 @@ fn UploadESSAndObj essPack objPath texPath topTexPath x y z errorID taskID=
 	resetMaxFile #noprompt
 	DOSCommand uplocalCommand
 	print ("Finished " + "UploadESSAndObj")	
-)
-
-fn CheckScene taskID =
-(
-	print ("Checking Scene")
-	max select all
-	
-	if selection.count == 0 then
-	(
-		UploadESSAndObj "0" "0" "0" "0" 0 0 0 9 taskID
-		return false
-	)
-	
-	explodeGroup selection
-	
-	local helperObjs = #()
-	local hideFrozen = maxOps.hideFrozenObjects
-	for o in objects where ((superclassof o != GeometryClass) or (o.isHidden) or (hideFrozen and o.isFrozen) or not (canconvertto o Editable_Mesh)) do
-	(
-		append helperObjs o
-	)
-	delete helperObjs
-	
-	if Geometry.count == 0 then
-	(
-		UploadESSAndObj "0" "0" "0" "0" 0 0 0 9 taskID
-		return false
-	)
-	
-	if Geometry.count > 100 then
-	(
-		UploadESSAndObj "0" "0" "0" "0" 0 0 0 2 taskID
-		return false
-	)
-	
-	local numfaces = 0
-	for OBJ in Geometry do(
-		numfaces += OBJ.mesh.numfaces
-	)
-	
-	if numfaces > 2000000 then
-	(
-		UploadESSAndObj "0" "0" "0" "0" 0 0 0 6 taskID
-		return false
-	)
-	
-	for i in sceneMaterials do 
-	(
-		if (i.category != #standard) and (i.category != #VRay) and (i.category != #2D) then
-		(
-			UploadESSAndObj "0" "0" "0" "0" 0 0 0 8 taskID
-			return false
-		)
-	)
-	
-	return true
 )
 
 fn GetSceneSize =
@@ -305,13 +250,77 @@ fn GetSceneSize =
 	return [myBox.max.x - myBox.min.x, myBox.max.y - myBox.min.y, myBox.max.z - myBox.min.z]
 )
 
-fn AlignScene topPngPath =
+fn CheckScene taskID =
+(
+	print ("Checking Scene")
+	max select all
+	
+	if selection.count == 0 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 9 taskID
+		return false
+	)
+	
+	explodeGroup selection
+	
+	local helperObjs = #()
+	local hideFrozen = maxOps.hideFrozenObjects
+	for o in objects where ((superclassof o != GeometryClass) or (o.isHidden) or (hideFrozen and o.isFrozen) or not (canconvertto o Editable_Mesh)) do
+	(
+		append helperObjs o
+	)
+	delete helperObjs
+	
+	if Geometry.count == 0 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 9 taskID
+		return false
+	)
+	
+	if Geometry.count > 100 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 2 taskID
+		return false
+	)
+	
+	local numfaces = 0
+	for OBJ in Geometry do(
+		numfaces += OBJ.mesh.numfaces
+	)
+	
+	if numfaces > 2000000 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 6 taskID
+		return false
+	)
+	
+	for i in sceneMaterials do 
+	(
+		if (i.category != #standard) and (i.category != #VRay) and (i.category != #2D) then
+		(
+			UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 8 taskID
+			return false
+		)
+	)
+	
+	local sceneSize = GetSceneSize()
+	
+	if sceneSize.x > 15000 or sceneSize.y > 15000 or sceneSize.z > 3000 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 7 taskID
+		return false
+	)	
+	
+	return sceneSize
+)
+
+fn AlignScene topPngPath sceneSize =
 (
 	max select all
 	bigGroup = group selection
 	bigGroup.pos = [0, 0, 0]
 	
-	local mySize = GetSceneSize()
+	local mySize = sceneSize
 	local myCam = Freecamera()
 	myCam.pos = [0, 0, 3000]
 	myCam.fov = 53.13
@@ -354,33 +363,31 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 		
 		ReadMaxScene maxScenename
 		
-		if CheckScene taskID == false then
+		local sceneSize = CheckScene taskID
+		if sceneSize == false then
 		(
-			return "MeshTool Finished Init"
+			return false
 		)
 		
 		local top_view_png = meshToolPath + "/MAP/top_view.png"
-		local sceneSize = AlignScene top_view_png
+		AlignScene top_view_png sceneSize
 		local essPack = ExportESS meshToolPath zipFilename
 		OptimizeMesh 4000
 		AttachMeshs()
 		AutoUnwrapUV()
 		local texPath = BackTexture (meshToolPath + "/OBJ/") 1024
 		local objPath = ExportMeshs meshToolPath zipFilename
+		local mtlPath = meshToolPath + "\\OBJ\\export.mtl"
 		
-		UploadESSAndObj essPack objPath texPath top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
-		--UploadESSAndObj "" "" "" top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
-		--copyFile objPack ("E:/OBJS/" + (filenameFromPath objPack))
+		UploadESSAndObj essPack objPath texPath mtlPath top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
 	)
 	catch
 	(
 		print "Find Error!"
 		format "*** % ***\n" (getCurrentException())
 		resetMaxFile #noprompt
-		UploadESSAndObj "0" "0" "0" "0" 0 0 0 10 taskID
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 10 taskID
 	)
-	print "MeshTool Finished Init"
 )
 uiaccessor.closedialog (windows.getchildhwnd 0 "MAXScript Listener")[1]
 renderSceneDialog.close()
-print "MeshTool Finished Init"

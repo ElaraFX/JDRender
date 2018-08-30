@@ -93,9 +93,9 @@ void getIncludedModels(Json::Value &model, EH_Context *ctx)
 				
 				// declare object_id color
 				eiColor object_id = ei_color(0, 0, 0);
-				if (model["models"][i].isMember("object_id"))
+				if (model["models"][i].isMember("markingColor"))
 				{
-					int c = model["models"][i]["object_id"].asInt();
+					int c = model["models"][i]["markingColor"].asInt();
 					object_id.r = float((c / 256 / 256) % 256) / 255.0f;
 					object_id.g = float((c / 256) % 256) / 255.0f;
 					object_id.b = float(c % 256) / 255.0f;
@@ -178,7 +178,7 @@ void get_vector2(std::string &str, size_t &pos, std::vector<float> &container)
 	container.push_back(get_float(str, pos));
 	container.push_back(get_float(str, pos));
 }
-void parseCustomModel(std::string &mesh, EH_Context *ctx, int idx, EH_Mesh &custom_mesh)
+void parseCustomModel(std::string &mesh, EH_Context *ctx, int idx, EH_Mesh &custom_mesh, bool flip_side)
 {
 	size_t pos = 0, last_pos = 0;
 	eiVector val;
@@ -254,6 +254,31 @@ void parseCustomModel(std::string &mesh, EH_Context *ctx, int idx, EH_Mesh &cust
 	custom_mesh.normals = (EH_Vec*)(&normal_data[0]);
 	custom_mesh.n_indices = (uint_t*)(&n_indice_data[0]);
 	custom_mesh.uv_indices = (uint_t*)(&uv_indice_data[0]);
+
+	if (flip_side)
+	{
+		for (int i = 0; i < custom_mesh.num_verts; ++i)
+		{
+			custom_mesh.normals[i][0] = -custom_mesh.normals[i][0];
+			custom_mesh.normals[i][1] = -custom_mesh.normals[i][1];
+			custom_mesh.normals[i][2] = -custom_mesh.normals[i][2];
+		}
+		for (int i = 0; i < custom_mesh.num_faces; ++i)
+		{
+			uint_t temp = custom_mesh.face_indices[i * 3 + 1];
+			custom_mesh.face_indices[i * 3 + 1] = custom_mesh.face_indices[i * 3 + 2];
+			custom_mesh.face_indices[i * 3 + 2] = temp;
+
+			temp = custom_mesh.uv_indices[i * 3 + 1];
+			custom_mesh.uv_indices[i * 3 + 1] = custom_mesh.uv_indices[i * 3 + 2];
+			custom_mesh.uv_indices[i * 3 + 2] = temp;
+
+			temp = custom_mesh.n_indices[i * 3 + 1];
+			custom_mesh.n_indices[i * 3 + 1] = custom_mesh.n_indices[i * 3 + 2];
+			custom_mesh.n_indices[i * 3 + 2] = temp;
+		}
+	}
+
 	EH_add_mesh(ctx, mesh_name, &custom_mesh);
 }
 
@@ -266,7 +291,14 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 			if (model["customModels"][i].isMember("model"))
 			{
 				EH_Mesh mesh;
-				parseCustomModel(model["customModels"][i]["model"].asString(), ctx, i, mesh);
+				// face side(0: front, 1:back, 2:double)
+				int side = 2;
+				if (model["customModels"][i].isMember("side"))
+				{
+					side = model["customModels"][i]["side"].asInt();
+				}
+
+				parseCustomModel(model["customModels"][i]["model"].asString(), ctx, i, mesh, (side == 1) ? true : false);
 
 				// matrix
 				eiMatrix m_tran = l2r * y2z;
@@ -335,8 +367,13 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 					mat.diffuse_tex.offset_u = model["customModels"][i]["offset"]["x"].asFloat();
 					mat.diffuse_tex.offset_v = model["customModels"][i]["offset"]["y"].asFloat();
 				}
+
+				if (side != 2)
+				{
+					mat.backface_cull = true;
+				}
+
 				char mat_name[32] = "";
-				mat.backface_cull = true;
 				sprintf(mat_name, "%s_%d", MAT_NAME, i);
 				EH_add_vray_material(ctx, mat_name, &mat);
 
@@ -353,9 +390,9 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 
 				// declare object_id color
 				eiColor object_id = ei_color(0, 0, 0);
-				if (model["customModels"][i].isMember("object_id"))
+				if (model["customModels"][i].isMember("markingColor"))
 				{
-					int c = model["customModels"][i]["object_id"].asInt();
+					int c = model["customModels"][i]["markingColor"].asInt();
 					object_id.r = float((c / 256 / 256) % 256) / 255.0f;
 					object_id.g = float((c / 256) % 256) / 255.0f;
 					object_id.b = float(c % 256) / 255.0f;

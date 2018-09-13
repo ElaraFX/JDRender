@@ -1,14 +1,21 @@
+global baseObjects
+global glassObjects
+global metalObjects
+global needBakeObject
+
 fn OptimizeMesh maxFace = 
 (
 	for OBJ in Geometry do(
 		InstanceMgr.MakeObjectsUnique OBJ #prompt
 		local numfaces = OBJ.mesh.numfaces
-
+		
+		
 		if numfaces > 256 then
 		(	
-			if numfaces < maxFace then
+			if numfaces < 8000 then
 			(
-				local vp = 50
+				local factor = 1.0 - (numfaces / 8000.0) * 0.5
+				local vp = factor * 100.0
 			)
 			else
 			(
@@ -38,7 +45,10 @@ fn AutoUnwrapUV =
 (
 	max modify mode
 	local unwrapUVW_normalList = #([1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]) -- arg for Unwrap_UVW.flattenMap
-	for OBJ in Geometry do(		
+	print needBakeObject
+	if needBakeObject != undefined then(
+		print needBakeObject
+		local OBJ = needBakeObject
 		unwrapMod = unwrap_UVW()
 		
 		unwrapMod.setAlwaysEdit ( false )
@@ -95,7 +105,8 @@ fn BakeDiffuseAndAlpha obj size pName=
 
 fn BackTexture pName bitmapSize=
 (
-	for OBJ in Geometry do(
+	if needBakeObject != undefined then(
+		local OBJ = needBakeObject
 		
 		BakeDiffuseAndAlpha OBJ bitmapSize pName
 	)
@@ -108,6 +119,7 @@ fn ExportMeshs pName zipFilename=
 	local exportSettings = objExp.getIniName()
 	setINISetting exportSettings "Material" "UseMapPath" "1"
 	setINISetting exportSettings "Material" "MapPath" "./"
+	setINISetting exportSettings "Geometry" "FaceType" "0"
 	local theClasses = exporterPlugin.classes
 	local _objIdx = findItem theClasses ObjExp
 	local objPath = pName + "\\OBJ\\export.obj"
@@ -119,24 +131,103 @@ fn ExportMeshs pName zipFilename=
 	return objPath
 )
 
+fn CheckMaterial mtl=
+(
+	classOfMtl = classof mtl
+	if classOfMtl == VRayMtl then
+	(
+		if mtl.Refraction.value > 130 then
+		(
+			 --glass
+			return 1
+		)else(
+			if mtl.Reflection.value > 130 then
+			(
+				if mtl.reflection_fresnel == off then
+				(
+					return 2
+				)else
+				(
+					if mtl.reflection_lockIOR == off and mtl.reflection_ior < 0.2 then
+					(
+						return 2
+					)
+				)				
+			)
+		)			
+	)
+	 --base
+	return 0
+)
+
+fn ColorToHex c=
+(
+	ret = "0x"
+	h = bit.intashex c.r
+	if h.count < 2 then
+	(
+		h = ("0"+h)
+	)
+	ret+= h
+
+	h = bit.intashex c.g
+	if h.count < 2 then
+	(
+		h = ("0"+h)
+	)
+	ret+= h
+
+	h = bit.intashex c.b
+	if h.count < 2 then
+	(
+		h = ("0"+h)
+	)
+	ret+= h
+	ret
+)
+
 fn AttachMeshs =
 (
-	local meshNames = #()
+	baseObjects = #()
+	glassObjects = #()
+	metalObjects = #()
+	
 	for OBJ in Geometry do(
 		try(
 			--resetxform OBJ
 			convertToPoly OBJ
 			if isKindOf OBJ Editable_Poly then
 			(
-				append meshNames OBJ
+				local mtlType = CheckMaterial OBJ.material
+				if mtlType == 1 then
+				(
+					OBJ.name = OBJ.name + "_glass_color_" + ColorToHex(OBJ.material.Refraction)
+					append glassObjects OBJ
+				)else if mtlType == 2 then
+				(
+					OBJ.name = OBJ.name + "_metal_color_" + ColorToHex(OBJ.material.Reflection) + "_glossiness_" + (int(OBJ.material.reflection_glossiness * 100) as string)
+					append metalObjects OBJ
+				)else
+				(
+					append baseObjects OBJ
+				)
 			)
 		) catch()
 	)
 	
-	for i = 2 to meshNames.count do
+	for i = 2 to baseObjects.count do
 	(
-		 polyop.attach meshNames[1] meshNames[i]
+		 polyop.attach baseObjects[1] baseObjects[i]
 	)
+	
+	if baseObjects.count > 0 then
+	(
+		needBakeObject = baseObjects[1]
+	)else
+	(
+		needBakeObject = undefined
+	)
+	
 	print ("Finished " + "AttachMeshs")
 )
 
@@ -345,6 +436,7 @@ fn AlignScene topPngPath sceneSize =
 	pngio.setAlpha true;
 	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[renderWidth,renderHeight] outputfile:topPngPath
 	--delete tempLight
+	ungroup bigGroup
 	print ("Finished " + "AlignScene")	
 	return mySize
 	

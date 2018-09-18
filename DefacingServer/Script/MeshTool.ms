@@ -418,7 +418,7 @@ fn AlignScene topPngPath sceneSize =
 	myCam.orthoProjection = true
 	myCam.baseObject.targetDistance = mySize.x
 	
-	local maxEdge = 1024
+	local maxEdge = 512
 	if mySize.x > mySize.y then
 	(
 		renderWidth = maxEdge

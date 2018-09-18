@@ -7,6 +7,7 @@
 #include <string>
 #include <assert.h>
 #include <io.h>
+#include <algorithm>
 
 using namespace std;
 HWND mainwindow;
@@ -178,22 +179,25 @@ int _tmain(int argc, TCHAR* argv[])
     _tsystem(removeEsss.c_str());
     _tsystem(removeObjs.c_str());
 
-    tstring makeMAXFolder = tstring(_T("md ")) + exePath + tstring(_T("\\MAX"));
+    tstring makeMAXFolder = tstring(_T("md ")) + exePath + tstring(_T("\\MAX\\")) + taskID;
     tstring makeESSFolder = tstring(_T("md ")) + exePath + tstring(_T("\\ESS"));
     tstring makeOBJFolder = tstring(_T("md ")) + exePath + tstring(_T("\\OBJ"));
     _tsystem(makeMAXFolder.c_str());
     _tsystem(makeESSFolder.c_str());
     _tsystem(makeOBJFolder.c_str());
 
+    //tstring max2016Path = GetStringValueFromHKLM(_T("SOFTWARE\\Autodesk\\3dsMax\\18.0"), _T("Installdir"));
+    //tstring max2017Path = GetStringValueFromHKLM(_T("SOFTWARE\\Autodesk\\3dsMax\\19.0"), _T("Installdir"));
+    tstring max2018Path = GetStringValueFromHKLM(_T("SOFTWARE\\Autodesk\\3dsMax\\20.0"), _T("Installdir"));
+
     if (!IsProcessRunning(_T("3dsmax.exe")))
     {
-        tstring max2016Path =GetStringValueFromHKLM(_T("SOFTWARE\\Autodesk\\3dsMax\\18.0"), _T("Installdir"));
-        if (max2016Path.empty())
+        if (max2018Path.empty())
         {
-            printf("3DsMax 2016 don't install!\n");
+            printf("3DsMax 2018 don't install!\n");
             return 0;
         }
-        tstring maxExePath = _T("\"") + max2016Path + _T("3dsmax.exe\"");
+        tstring maxExePath = _T("\"") + max2018Path + _T("3dsmax.exe\"");
         startup(maxExePath.c_str());
         Sleep(5000);
         if (!IsProcessRunning(_T("3dsmax.exe")))
@@ -204,19 +208,19 @@ int _tmain(int argc, TCHAR* argv[])
     }
     
     TCHAR	zipCommandStr[MAX_PATH];
-    _stprintf_s(zipCommandStr, _T("7z x \"%s\" -y -aoa -o\"%s\\Max\\\""), zipFilename, exePath);
+    _stprintf_s(zipCommandStr, _T("7z x \"%s\" -y -aoa -o\"%s\\Max\\%s\\\""), zipFilename, exePath, taskID);
 
     _tsystem(zipCommandStr);
 
     TCHAR	maxPathStr[MAX_PATH];
-    _stprintf_s(maxPathStr, _T("%s\\Max\\"), exePath);
+    _stprintf_s(maxPathStr, _T("%s\\Max\\%s\\"), exePath, taskID);
     TCHAR	maxFilenameStr[MAX_PATH];
     maxFileSize = 0;
     tstring	maxFilename = FindMaxFile2(maxPathStr);
     if (maxFilename.empty())
     {
         printf("Can't find max file!\n");
-        tstring errorCommand = _T("UploadESSAndObj 0 0 0 0 0 0 0 3 ") + tstring(taskID);
+        tstring errorCommand = _T("UploadESSAndObj 0 0 0 0 0 0 0 0 3 ") + tstring(taskID);
         _tsystem(errorCommand.c_str());
         return 0;
     }
@@ -224,11 +228,12 @@ int _tmain(int argc, TCHAR* argv[])
     if (maxFileSize > 100000000)
     {
         printf("max file is big!\n");
-        tstring errorCommand = _T("UploadESSAndObj 0 0 0 0 0 0 0 5 ") + tstring(taskID);
+        tstring errorCommand = _T("UploadESSAndObj 0 0 0 0 0 0 0 0 5 ") + tstring(taskID);
         _tsystem(errorCommand.c_str());
         return 0;
     }
 
+	TCHAR scriptText[5000];
     for (size_t i = 0; i < 200; i++)
     {
         mainwindow = nullptr;
@@ -246,15 +251,38 @@ int _tmain(int argc, TCHAR* argv[])
                     scriptHWnd = FindWindowEx(scriptHWnd, NULL, _T("MXS_Scintilla"), NULL);
                     if (scriptHWnd != nullptr)
                     {
-                        tstring callMeshtool = _T("CallMeshTool \"") + maxFilename + _T("\" \"") + tstring(exePath) + _T("\" \"") + zipFilename + _T("\" \"") + taskID + _T("\"\n");
-                        SendMessage(scriptHWnd, WM_SETTEXT, 0, (LPARAM)callMeshtool.c_str());
-                        SendMessage(scriptHWnd, WM_CHAR, VK_RETURN, 0);
+						//for (size_t i = 0; i < 60; i++)
+						{
+							//SendMessage(scriptHWnd, WM_GETTEXT, 255, (LPARAM)scriptText);//向该窗口发送消息，获取该窗口的文字。
+							//if (_tcscmp(scriptText, _T("\"MeshTool Finished Init\"")) == 0)
+							{
+								tstring runScript = _T("fileIn \"") + tstring(exePath) + _T("\\MeshTool.mse\"\n");
+								std::replace(runScript.begin(), runScript.end(), _T('\\'), _T('/'));
+								SendMessage(scriptHWnd, WM_SETTEXT, 0, (LPARAM)runScript.c_str());
+								SendMessage(scriptHWnd, WM_CHAR, VK_RETURN, 0);
+
+								tstring callMeshtool = _T("CallMeshTool \"") + maxFilename + _T("\" \"") + tstring(exePath) + _T("\" \"") + zipFilename + _T("\" \"") + taskID + _T("\"\n");
+								SendMessage(scriptHWnd, WM_SETTEXT, 0, (LPARAM)callMeshtool.c_str());
+								SendMessage(scriptHWnd, WM_CHAR, VK_RETURN, 0);
+							}
+							//Sleep(500);
+						}
+
                         scriptHWnd = nullptr;
                         break;
                     }
                 }
             }
 
+        }
+        else
+        {
+            Sleep(5000);
+            if (!IsProcessRunning(_T("3dsmax.exe")))
+            {
+                tstring maxExePath = _T("\"") + max2018Path + _T("3dsmax.exe\"");
+                startup(maxExePath.c_str());
+            }
         }
         Sleep(5000);
     }

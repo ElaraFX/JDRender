@@ -2,6 +2,7 @@ global baseObjects
 global glassObjects
 global metalObjects
 global needBakeObject
+global meshToolRunTimes
 
 fn OptimizeMesh maxFace = 
 (
@@ -45,9 +46,7 @@ fn AutoUnwrapUV =
 (
 	max modify mode
 	local unwrapUVW_normalList = #([1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]) -- arg for Unwrap_UVW.flattenMap
-	print needBakeObject
 	if needBakeObject != undefined then(
-		print needBakeObject
 		local OBJ = needBakeObject
 		unwrapMod = unwrap_UVW()
 		
@@ -71,6 +70,7 @@ fn AutoUnwrapUV =
 
 fn BakeDiffuseAndAlpha obj size pName=
 (
+	pngio.settype(#true24)
 	pngio.setAlpha true;
 	--Clear all render elements 
 	obj.iNodeBakeProperties.removeAllBakeElements() 
@@ -109,9 +109,13 @@ fn BackTexture pName bitmapSize=
 		local OBJ = needBakeObject
 		
 		BakeDiffuseAndAlpha OBJ bitmapSize pName
+		print ("Finished " + "BackTexture")
+		return (pName + "texture.png")
+	)else
+	(
+		print ("Finished " + "BackTexture")
+		return ("none")
 	)
-	print ("Finished " + "BackTexture")
-	return (pName + "texture.png")
 )
 
 fn ExportMeshs pName zipFilename=
@@ -295,7 +299,7 @@ fn ReadMaxScene pName =
 	
 	try
 	(
-		loadMaxFile pName useFileUnits:false quiet:true allowPrompts:false --missingExtFilesAction:#abort missingDLLsAction:#abort missingXRefsAction:#abort
+		loadMaxFile pName useFileUnits:false quiet:true allowPrompts:false missingXRefsAction:#abort --missingExtFilesAction:#abort missingDLLsAction:#abort 
 	)
 	catch
 	(
@@ -322,6 +326,19 @@ fn UploadESSAndObj essPack objPath texPath mtlPath topTexPath x y z errorID task
 	resetMaxFile #noprompt
 	DOSCommand uplocalCommand
 	print ("Finished " + "UploadESSAndObj")	
+	
+	if meshToolRunTimes == undefined then
+	(
+		meshToolRunTimes = 0
+	)
+	
+	if meshToolRunTimes > 5 then
+	(
+		--quitMAX quiet:true
+	)else
+	(
+		meshToolRunTimes += 1
+	)
 )
 
 fn GetSceneSize =
@@ -345,6 +362,7 @@ fn CheckScene taskID =
 (
 	print ("Checking Scene")
 	max select all
+	xrefs.deleteAllXRefs()
 	
 	if selection.count == 0 then
 	(
@@ -433,6 +451,7 @@ fn AlignScene topPngPath sceneSize =
 	--useEnvironmentMap = off
 	--backgroundColor = color 255 255 255
 	--local tempLight = Omnilight multiplier:0
+	pngio.settype(#true24)
 	pngio.setAlpha true;
 	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[renderWidth,renderHeight] outputfile:topPngPath
 	--delete tempLight

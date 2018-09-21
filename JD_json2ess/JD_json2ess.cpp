@@ -82,6 +82,9 @@ bool translateJson(const char* json_file_path, const char* out_file_path)
 		}
 
 		getModelList(root2);
+		getTextureList(root2);
+		getHDRList(root2);
+		getIESList(root2);
 		getIncludedModels(root1, pContext);
 		getCustomModels(root1, pContext);
 		getLight(root1, pContext);
@@ -99,15 +102,15 @@ bool translateJson(const char* json_file_path, const char* out_file_path)
 		return false;
 	}
 }
-////
-//int main()
-//{
-//	if (!translateJson("D:/work/JDRender/JD_json2ess/complex2.json", "d:/jd1.ess"))
-//	{
-//		printf("json parse false!\n");
-//	}
-//	char xx[128] = "";
-//	getCameraName(0, xx);
-//	system("pause");
-//	return 1;
-//}
+//
+int main()
+{
+	if (!translateJson("D:/work/JDRender/JD_json2ess/new1.json", "d:/jd1.ess"))
+	{
+		printf("json parse false!\n");
+	}
+	char xx[128] = "";
+	getCameraName(0, xx);
+	system("pause");
+	return 1;
+}

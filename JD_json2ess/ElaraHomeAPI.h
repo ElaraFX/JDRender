@@ -378,6 +378,7 @@ struct EH_Texture
 struct EH_Vray_Material
 {
 	int brdf_type;
+	bool backface_cull;			/**< Use backface cull? */
 
 	/* Diffuse layer */
 	EH_RGB diffuse_color;		/**< Diffuse color, Range: [0, inf), default: (1 1 1) */  
@@ -396,6 +397,7 @@ struct EH_Vray_Material
 	bool normal_bump;			/**< The bump texture is actually a normal map? */
 	EH_Vray_Material() :
 		brdf_type(1),
+		backface_cull(false),
 		roughness(0.0f),
 		glossiness(0.0f),
 		specular_fresnel(1.5f),
@@ -565,7 +567,7 @@ struct EH_AssemblyInstance
  */
 EH_API void EH_add_assembly_instance(EH_Context *ctx, const char *name, const EH_AssemblyInstance *inst);
 
-
+EH_API void EH_declare_instance_param(EH_Context *ctx, const char *name, const char *type, const char *attribute, const char *storage_class);
 
 /** The light data for user to fill
  */
@@ -656,6 +658,8 @@ struct EH_Sun
  */
 EH_API void EH_set_sun(EH_Context *ctx, const EH_Sun *sun);
 
+EH_API void EH_set_sun_with_matrix(EH_Context *ctx, const EH_Sun *sun, float *mat);
+
 /** The callback to color buffer during rendering.
 	For users to better to deal with color such as exposure, tone mapping and so on,
 	color_data in callback WON'T clamp to range of [0,1].
@@ -674,3 +678,6 @@ EH_API bool EH_start_render(EH_Context *ctx, const char *ess_name, bool is_inter
 /** Stop rendering
 */
 EH_API void EH_stop_render(EH_Context *ctx);
+
+// add custom node
+EH_API void EH_add_custom_node(EH_Context *ctx, const char *type, const char *name);

@@ -1,8 +1,27 @@
 #include "setting.h"
 
 
-GlobalSettings g_s;
+#define GLOBAL_STDELEM_SHADER_NAME "global_stdelem_shader"
 
+GlobalSettings g_s;
+ElementMap g_hdr_map;
+
+
+void getHDRList(Json::Value &hdr_list)
+{
+	g_hdr_map.clear();
+	if (hdr_list.isMember("hdrInfo"))
+	{
+		for (unsigned int i = 0; i < hdr_list["hdrInfo"].size(); i++)
+		{
+			if (hdr_list["hdrInfo"][i].isMember("hdrId") && hdr_list["hdrInfo"][i].isMember("hdrUrl"))
+			{
+				g_hdr_map.insert(ElementMap::value_type(hdr_list["hdrInfo"][i]["hdrId"].asInt(), hdr_list["hdrInfo"][i]["hdrUrl"].asString()));
+				printf("%d: %s\n", hdr_list["hdrInfo"][i]["hdrId"].asInt(), hdr_list["hdrInfo"][i]["hdrUrl"].asString().c_str());
+			}
+		}
+	}	
+}
 
 void getGlobalSettings(Json::Value &global_settings, EH_Context *ctx)
 {
@@ -40,12 +59,15 @@ void getEnvironment(Json::Value &envi, EH_Context *ctx)
 	{
 		EH_Sky sky;
 		sky.enabled = true;
-		std::string hdr_path;
-		if (envi["environmental"].isMember("background"))
+		if (envi["environmental"].isMember("backgroundId"))
 		{
-			hdr_path = envi["environmental"]["background"].asString();
-			sky.hdri_name = hdr_path.c_str();
-			sky.hdri_rotation = 0.0f;
+			int id = envi["environmental"]["backgroundId"].asInt();
+			ElementMap::iterator iter = g_hdr_map.find(id);
+			if (iter != g_hdr_map.end())
+			{
+				sky.hdri_name = iter->second.c_str();
+				sky.hdri_rotation = 0.0f;
+			}
 		}
 		if (envi["environmental"].isMember("color"))
 		{
@@ -66,16 +88,37 @@ void getEnvironment(Json::Value &envi, EH_Context *ctx)
 		EH_set_sky(ctx, &sky);
 
 		// sunlight
-		if (envi["environmental"].isMember("sun_strenth"))
+		if (envi["environmental"].isMember("sun_strength"))
 		{
-			/*EH_Sun sun;
-			sun.dir[0] = dir[0];
-			sun.dir[1] = dir[1];
-			float color[3] = {0.94902, 0.776471, 0.619608};
+			EH_Sun sun;
+			float mat[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+			if (envi["environmental"].isMember("sun_matrix"))
+			{
+				for (unsigned int j = 0; j < envi["environmental"]["sun_matrix"].size() && j < 16; j++)
+				{
+					mat[j] = envi["environmental"]["sun_matrix"][j].asFloat();
+				}
+			}
+			eiMatrix s_tran = ei_matrix(
+				mat[0], mat[1], mat[2], mat[3],
+				mat[4], mat[5], mat[6], mat[7],
+				mat[8], mat[9], mat[10], mat[11],
+				mat[12], mat[13], mat[14], mat[15]
+				);
+			s_tran = y2z * l2r * s_tran * l2r * y2z;
+
+			float color[3] = {0, 0, 0};
+			if (envi["environmental"].isMember("sun_color"))
+			{
+				int c = envi["environmental"]["sun_color"].asInt();
+				color[0] = float((c / 256 / 256) % 256) / 255.0f;
+				color[1] = float((c / 256) % 256) / 255.0f;
+				color[2] = float(c % 256) / 255.0f;
+			}
 			memcpy(sun.color, color, sizeof(color));
-			sun.intensity = 94.24778;
+			sun.intensity = envi["environmental"]["sun_strength"].asFloat();
 			sun.soft_shadow = 1.0f;
-			EH_set_sun(ctx, &sun);*/
+			EH_set_sun_with_matrix(ctx, &sun, (float*)(s_tran.m));
 		}
 	}
 }
@@ -85,6 +128,7 @@ void getGlobalCameras(Json::Value &cameras, EH_Context *ctx)
 {
 	if (cameras.isMember("camera"))
 	{
+		EH_add_custom_node(ctx, "max_stdelem", GLOBAL_STDELEM_SHADER_NAME);
 		// get default camera
 		if (g_s.eh_cam.cubemap_render == false && cameras["camera"].size() > 0)
 		{

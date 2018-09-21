@@ -454,6 +454,11 @@ void EH_add_assembly_instance(EH_Context *ctx, const char *name, const EH_Assemb
 	reinterpret_cast<EssExporter*>(ctx)->AddAssemblyInstance(name, *inst);
 }
 
+void EH_declare_instance_param(EH_Context *ctx, const char *name, const char *type, const char *attribute, const char *storage_class)
+{
+	reinterpret_cast<EssExporter*>(ctx)->DeclareInstanceParam(name, type, attribute, storage_class);
+}
+
 void EH_add_light(EH_Context *ctx, const char *name, const EH_Light *lgt)
 {
 	reinterpret_cast<EssExporter*>(ctx)->AddLight(*lgt, std::string(name), g_show_portal_light_area);
@@ -467,6 +472,21 @@ void EH_set_sky(EH_Context *ctx, const EH_Sky *sky)
 void EH_set_sun(EH_Context *ctx, const EH_Sun *sun)
 {
 	reinterpret_cast<EssExporter*>(ctx)->AddSun(*sun);
+}
+
+void EH_set_sun_with_matrix(EH_Context *ctx, const EH_Sun *sun, float *mat)
+{
+	if (mat)
+	{
+		eiMatrix m = ei_matrix(mat[0], mat[1], mat[2], mat[3], mat[4], mat[5], mat[6], mat[7], mat[8], 
+			mat[9], mat[10], mat[11], mat[12], mat[13], mat[14], mat[15]);
+		reinterpret_cast<EssExporter*>(ctx)->AddSun(*sun, m);
+	}
+}
+
+void EH_add_custom_node(EH_Context *ctx, const char *type, const char *name)
+{
+	reinterpret_cast<EssExporter*>(ctx)->AddCustomNode(type, name);
 }
 
 EI_THREAD_FUNC render_callback(void *param)

@@ -23,6 +23,7 @@
 const char* instanceExt = "_instance";
 const char* MAX_EXPORT_ESS_DEFAULT_INST_NAME = "mtoer_instgroup_00";
 const char* g_inst_group_name = "GlobalInstGroupName";
+const char* GLOBAL_STDELEM_SHADER_NAME = "global_stdelem_shader";
 
 //left hand to right hand matrix
 const eiMatrix l2r = ei_matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1);
@@ -68,6 +69,10 @@ std::string AddCameraData(EssWriter& writer, const EH_Camera &cam, std::string& 
 	{
 		writer.AddRef("env_shader", envName);
 	}
+
+	std::vector<std::string> aov_lists;
+	aov_lists.push_back(GLOBAL_STDELEM_SHADER_NAME);
+	writer.AddRefGroup("aov_nodes", aov_lists);
 
 	float aspect = cam.aspect;
 	if (panorama)
@@ -605,6 +610,13 @@ void EssExporter::AddAssemblyInstance(const char *name, const EH_AssemblyInstanc
 	mElInstances.push_back(name);
 }
 
+void EssExporter::DeclareInstanceParam(const char *name, const char *type, const char *attribute, const char *storage_class)
+{
+	mWriter.BeginNode("instance", name);
+	mWriter.AddDeclare(type, attribute, storage_class);
+	mWriter.EndNode();
+}
+
 void EssExporter::AddMaterialFromEss(const EH_Material &mat, std::string matName, const char *essName)
 {
 	float eps = 0.0000001;
@@ -781,23 +793,29 @@ void TranslateIES(EssWriter& writer, const EH_Light &light, const std::string &l
 	std::string web_filename = light.ies_filename;
 	const eiVector color = ei_vector(light.light_color[0], light.light_color[1], light.light_color[2]);
 
-	writer.BeginNode("std_light_filter", filterName);
-		writer.AddBool("use_near_atten", false);
-		writer.AddScalar("near_start", 140.0f);
-		writer.AddScalar("near_stop", 140.0f);
-		writer.AddBool("use_far_atten", false);
-		writer.AddScalar("far_start", 80.0f);
-		writer.AddScalar("far_stop", 200.0f);
-		writer.AddBool("use_web_dist", true);
-		writer.AddToken("web_filename", web_filename);
-		writer.AddScalar("web_scale", 0.000029f);
-	writer.EndNode();
+	if (!web_filename.empty())
+	{
+		writer.BeginNode("std_light_filter", filterName);
+			writer.AddBool("use_near_atten", false);
+			writer.AddScalar("near_start", 140.0f);
+			writer.AddScalar("near_stop", 140.0f);
+			writer.AddBool("use_far_atten", false);
+			writer.AddScalar("far_start", 80.0f);
+			writer.AddScalar("far_stop", 200.0f);
+			writer.AddBool("use_web_dist", true);
+			writer.AddToken("web_filename", web_filename);
+			writer.AddScalar("web_scale", 0.000029f);
+		writer.EndNode();
+	}
 
 	writer.BeginNode("pointlight", lightName);
 		writer.AddScalar("intensity", light.intensity);
 		writer.AddColor("color", color);
-		writer.AddRef("shader", filterName);
 		writer.AddInt("samples", samples);
+		if (!web_filename.empty())
+		{
+			writer.AddRef("shader", filterName);
+		}
 	writer.EndNode();
 }
 
@@ -1134,6 +1152,19 @@ std::string AddVrayMaterial(EssWriter& writer, const EH_Vray_Material& mat, std:
 	writer.AddScalar("reflection_ior", mat.specular_fresnel);
 	writer.EndNode();
 
+	std::string max_input_mtl_name;
+	if (mat.backface_cull)
+	{
+		max_input_mtl_name = matName + "backface_shader";
+		writer.BeginNode( "backface_cull", max_input_mtl_name );
+		writer.LinkParam( "material", ei_standard_node, "result" );
+		writer.EndNode();
+	}
+	else
+	{
+		max_input_mtl_name = ei_standard_node;
+	}
+
 	std::string result_node = matName + "_result";
 
 	if (g_check_normal)
@@ -1143,7 +1174,7 @@ std::string AddVrayMaterial(EssWriter& writer, const EH_Vray_Material& mat, std:
 	else
 	{
 		writer.BeginNode("max_result", result_node);
-		writer.LinkParam("input", ei_standard_node, "result");
+		writer.LinkParam("input", max_input_mtl_name, "result");
 	}	
 	writer.EndNode();
 
@@ -1519,4 +1550,10 @@ void EssExporter::EndExport()
 void EssExporter::SetLightSamples( const int samples )
 {
 	mLightSamples = samples;
+}
+
+void EssExporter::AddCustomNode(const char *type, const char *name)
+{
+	mWriter.BeginNode(type, name);
+	mWriter.EndNode();
 }

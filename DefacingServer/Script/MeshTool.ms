@@ -6,7 +6,7 @@ global meshToolRunTimes
 
 fn OptimizeMesh maxFace = 
 (
-	for OBJ in Geometry do(
+	for OBJ in Geometry  where (canconvertto OBJ Editable_Mesh) do(
 		InstanceMgr.MakeObjectsUnique OBJ #prompt
 		local numfaces = OBJ.mesh.numfaces
 		
@@ -196,7 +196,7 @@ fn AttachMeshs =
 	glassObjects = #()
 	metalObjects = #()
 	
-	for OBJ in Geometry do(
+	for OBJ in Geometry where (canconvertto OBJ Editable_Mesh) do(
 		try(
 			--resetxform OBJ
 			convertToPoly OBJ
@@ -248,6 +248,7 @@ fn ChangeToVray =
 	renderers.current.progressive_maxSamples = 4
 	renderers.current.gi_on = false
 	renderers.current.options_displacement = false
+	renderers.current.options_defaultLights = 2
 	
 	rendOutputFilename = ""
 	rendSaveFile = false
@@ -343,7 +344,7 @@ fn UploadESSAndObj essPack objPath texPath mtlPath topTexPath x y z errorID task
 
 fn GetSceneSize =
 (
-	local clearObjs = for obj in Geometry collect obj
+	local clearObjs = for obj in Geometry  where (canconvertto obj Editable_Mesh) collect obj
 	local myBox = Box3()
 	for obj in clearObjs do
 	(
@@ -393,7 +394,7 @@ fn CheckScene taskID =
 	)
 	
 	local numfaces = 0
-	for OBJ in Geometry do(
+	for OBJ in Geometry where (canconvertto OBJ Editable_Mesh) do(
 		numfaces += OBJ.mesh.numfaces
 	)
 	
@@ -425,8 +426,8 @@ fn CheckScene taskID =
 
 fn AlignScene topPngPath sceneSize =
 (
-	max select all
-	bigGroup = group selection
+	local geoObjs = for obj in Geometry  where (canconvertto obj Editable_Mesh) collect obj
+	bigGroup = group geoObjs
 	bigGroup.pos = [0, 0, 0]
 	
 	local mySize = sceneSize

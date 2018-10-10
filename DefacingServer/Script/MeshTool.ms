@@ -1,14 +1,22 @@
+global baseObjects
+global glassObjects
+global metalObjects
+global needBakeObject
+global meshToolRunTimes
+
 fn OptimizeMesh maxFace = 
 (
 	for OBJ in Geometry do(
 		InstanceMgr.MakeObjectsUnique OBJ #prompt
 		local numfaces = OBJ.mesh.numfaces
-
+		
+		
 		if numfaces > 256 then
 		(	
-			if numfaces < maxFace then
+			if numfaces < 8000 then
 			(
-				local vp = 50
+				local factor = 1.0 - (numfaces / 8000.0) * 0.5
+				local vp = factor * 100.0
 			)
 			else
 			(
@@ -20,6 +28,9 @@ fn OptimizeMesh maxFace =
 			proOpt.Calculate = on
 			proOpt.OptimizationMode = 1
 			proOpt.KeepUV = on
+			proOpt.MergePoints = on
+			proOpt.PreventFlip = on
+			proOpt.LockPoints = on
 			proOpt.VertexPercent = vp
 			mSmooth = smooth ()
 			addmodifier OBJ mSmooth
@@ -35,7 +46,8 @@ fn AutoUnwrapUV =
 (
 	max modify mode
 	local unwrapUVW_normalList = #([1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]) -- arg for Unwrap_UVW.flattenMap
-	for OBJ in Geometry do(		
+	if needBakeObject != undefined then(
+		local OBJ = needBakeObject
 		unwrapMod = unwrap_UVW()
 		
 		unwrapMod.setAlwaysEdit ( false )
@@ -58,6 +70,7 @@ fn AutoUnwrapUV =
 
 fn BakeDiffuseAndAlpha obj size pName=
 (
+	pngio.settype(#true24)
 	pngio.setAlpha true;
 	--Clear all render elements 
 	obj.iNodeBakeProperties.removeAllBakeElements() 
@@ -92,16 +105,25 @@ fn BakeDiffuseAndAlpha obj size pName=
 
 fn BackTexture pName bitmapSize=
 (
-	for OBJ in Geometry do(
+	if needBakeObject != undefined then(
+		local OBJ = needBakeObject
 		
 		BakeDiffuseAndAlpha OBJ bitmapSize pName
+		print ("Finished " + "BackTexture")
+		return (pName + "texture.png")
+	)else
+	(
+		print ("Finished " + "BackTexture")
+		return ("none")
 	)
-	print ("Finished " + "BackTexture")
-	return (pName + "texture.png")
 )
 
 fn ExportMeshs pName zipFilename=
 (
+	local exportSettings = objExp.getIniName()
+	setINISetting exportSettings "Material" "UseMapPath" "1"
+	setINISetting exportSettings "Material" "MapPath" "./"
+	setINISetting exportSettings "Geometry" "FaceType" "0"
 	local theClasses = exporterPlugin.classes
 	local _objIdx = findItem theClasses ObjExp
 	local objPath = pName + "\\OBJ\\export.obj"
@@ -113,29 +135,109 @@ fn ExportMeshs pName zipFilename=
 	return objPath
 )
 
+fn CheckMaterial mtl=
+(
+	classOfMtl = classof mtl
+	if classOfMtl == VRayMtl then
+	(
+		if mtl.Refraction.value > 130 then
+		(
+			 --glass
+			return 1
+		)else(
+			if mtl.Reflection.value > 130 then
+			(
+				if mtl.reflection_fresnel == off then
+				(
+					return 2
+				)else
+				(
+					if mtl.reflection_lockIOR == off and mtl.reflection_ior < 0.2 then
+					(
+						return 2
+					)
+				)				
+			)
+		)			
+	)
+	 --base
+	return 0
+)
+
+fn ColorToHex c=
+(
+	ret = "0x"
+	h = bit.intashex c.r
+	if h.count < 2 then
+	(
+		h = ("0"+h)
+	)
+	ret+= h
+
+	h = bit.intashex c.g
+	if h.count < 2 then
+	(
+		h = ("0"+h)
+	)
+	ret+= h
+
+	h = bit.intashex c.b
+	if h.count < 2 then
+	(
+		h = ("0"+h)
+	)
+	ret+= h
+	ret
+)
+
 fn AttachMeshs =
 (
-	local meshNames = #()
+	baseObjects = #()
+	glassObjects = #()
+	metalObjects = #()
+	
 	for OBJ in Geometry do(
 		try(
 			--resetxform OBJ
 			convertToPoly OBJ
 			if isKindOf OBJ Editable_Poly then
 			(
-				append meshNames OBJ
+				local mtlType = CheckMaterial OBJ.material
+				if mtlType == 1 then
+				(
+					OBJ.name = OBJ.name + "_glass_color_" + ColorToHex(OBJ.material.Refraction)
+					append glassObjects OBJ
+				)else if mtlType == 2 then
+				(
+					OBJ.name = OBJ.name + "_metal_color_" + ColorToHex(OBJ.material.Reflection) + "_glossiness_" + (int(OBJ.material.reflection_glossiness * 100) as string)
+					append metalObjects OBJ
+				)else
+				(
+					append baseObjects OBJ
+				)
 			)
 		) catch()
 	)
 	
-	for i = 2 to meshNames.count do
+	for i = 2 to baseObjects.count do
 	(
-		 polyop.attach meshNames[1] meshNames[i]
+		 polyop.attach baseObjects[1] baseObjects[i]
 	)
+	
+	if baseObjects.count > 0 then
+	(
+		needBakeObject = baseObjects[1]
+	)else
+	(
+		needBakeObject = undefined
+	)
+	
 	print ("Finished " + "AttachMeshs")
 )
 
 fn ChangeToVray =
 (
+	renderers.current = Default_Scanline_Renderer()
 	for r in 1 to (rendererClass.classes).count where matchPattern ((rendererClass.classes)[r] as string) pattern:"V_Ray_Adv*" do
 	(
 		Renderers.Production = RendererClass.Classes[r]()
@@ -146,6 +248,26 @@ fn ChangeToVray =
 	renderers.current.progressive_maxSamples = 4
 	renderers.current.gi_on = false
 	renderers.current.options_displacement = false
+	
+	rendOutputFilename = ""
+	rendSaveFile = false
+	
+	local re = maxOps.GetCurRenderElementMgr() -- get the current render element manager
+	re.removeallrenderelements() -- remove all renderelements
+)
+
+fn ChangeToElara =
+(
+	renderers.current = Elara_Renderer()
+	renderers.current.MaxSamples = 4
+	renderers.current.DiffuseDepth = 1
+	renderers.current.SumDepth = 1
+	
+	rendOutputFilename = ""
+	rendSaveFile = false
+	
+	local re = maxOps.GetCurRenderElementMgr() -- get the current render element manager
+	re.removeallrenderelements() -- remove all renderelements
 )
 
 fn ExportESS pName zipFilename=
@@ -175,17 +297,25 @@ fn ReadMaxScene pName =
 	units.SystemType = #Millimeters
 	setVRaySilentMode()
 	
-	loadMaxFile pName useFileUnits:false quiet:true allowPrompts:false missingExtFilesAction:#abort missingDLLsAction:#abort missingXRefsAction:#abort
+	try
+	(
+		loadMaxFile pName useFileUnits:false quiet:true allowPrompts:false missingXRefsAction:#abort --missingExtFilesAction:#abort missingDLLsAction:#abort 
+	)
+	catch
+	(
+		print "Wrong max File!"
+	)
 	
 	print ("Finished " + "ReadMaxScene")
 )
 
-fn UploadESSAndObj essPack objPath texPath topTexPath x y z errorID taskID=
+fn UploadESSAndObj essPack objPath texPath mtlPath topTexPath x y z errorID taskID=
 (
 	local uplocalCommand = "UploadESSAndObj "
 	uplocalCommand += (essPack + " ")
 	uplocalCommand += (objPath + " ")
 	uplocalCommand += (texPath + " ")
+	uplocalCommand += (mtlPath + " ")
 	uplocalCommand += (topTexPath + " ")
 	uplocalCommand += ((x as string) + " ")
 	uplocalCommand += ((y as string) + " ")
@@ -193,25 +323,72 @@ fn UploadESSAndObj essPack objPath texPath topTexPath x y z errorID taskID=
 	uplocalCommand += ((errorID as string) + " ")
 	uplocalCommand += (taskID as string)
 	
-	DOSCommand uplocalCommand
-	print ("Finished " + "UploadESSAndObj")
 	resetMaxFile #noprompt
+	DOSCommand uplocalCommand
+	print ("Finished " + "UploadESSAndObj")	
+	
+	if meshToolRunTimes == undefined then
+	(
+		meshToolRunTimes = 0
+	)
+	
+	if meshToolRunTimes > 5 then
+	(
+		--quitMAX quiet:true
+	)else
+	(
+		meshToolRunTimes += 1
+	)
+)
+
+fn GetSceneSize =
+(
+	local clearObjs = for obj in Geometry collect obj
+	local myBox = Box3()
+	for obj in clearObjs do
+	(
+		local tempObj = editable_mesh name:obj.name
+		convertToPoly tempObj
+		polyop.attach  tempObj obj
+		local tMin = (nodeLocalBoundingBox tempObj)[1]
+		local tMax = (nodeLocalBoundingBox tempObj)[2]
+		expandToInclude myBox tMin
+		expandToInclude myBox tMax
+	)
+	return [myBox.max.x - myBox.min.x, myBox.max.y - myBox.min.y, myBox.max.z - myBox.min.z]
 )
 
 fn CheckScene taskID =
 (
 	print ("Checking Scene")
 	max select all
+	xrefs.deleteAllXRefs()
+	
+	if selection.count == 0 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 9 taskID
+		return false
+	)
+	
 	explodeGroup selection
+	
 	local helperObjs = #()
-	for o in objects where superclassof o != GeometryClass do
+	local hideFrozen = maxOps.hideFrozenObjects
+	for o in objects where ((superclassof o != GeometryClass) or (o.isHidden) or (hideFrozen and o.isFrozen) or not (canconvertto o Editable_Mesh)) do
 	(
 		append helperObjs o
 	)
 	delete helperObjs
+	
+	if Geometry.count == 0 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 9 taskID
+		return false
+	)
+	
 	if Geometry.count > 100 then
 	(
-		UploadESSAndObj "0" "0" "0" "0" 0 0 0 2 taskID
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 2 taskID
 		return false
 	)
 	
@@ -222,7 +399,7 @@ fn CheckScene taskID =
 	
 	if numfaces > 2000000 then
 	(
-		UploadESSAndObj "0" "0" "0" "0" 0 0 0 6 taskID
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 6 taskID
 		return false
 	)
 	
@@ -230,46 +407,55 @@ fn CheckScene taskID =
 	(
 		if (i.category != #standard) and (i.category != #VRay) and (i.category != #2D) then
 		(
-			UploadESSAndObj "0" "0" "0" "0" 0 0 0 8 taskID
+			UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 8 taskID
 			return false
 		)
 	)
 	
-	return true
-)
-
-fn GetSceneSize =
-(
-	local myBox = Box3()
-	for obj in Geometry do
+	local sceneSize = GetSceneSize()
+	
+	if sceneSize.x > 15000 or sceneSize.y > 15000 or sceneSize.z > 3000 then
 	(
-		local tMin = (nodeLocalBoundingBox obj)[1]
-		local tMax = (nodeLocalBoundingBox obj)[2]
-		expandToInclude myBox tMin
-		expandToInclude myBox tMax
-	)
-	return [myBox.max.x - myBox.min.x, myBox.max.y - myBox.min.y, myBox.max.z - myBox.min.z]
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 7 taskID
+		return false
+	)	
+	
+	return sceneSize
 )
 
-fn AlignScene topPngPath =
+fn AlignScene topPngPath sceneSize =
 (
 	max select all
 	bigGroup = group selection
 	bigGroup.pos = [0, 0, 0]
 	
-	local mySize = GetSceneSize()
+	local mySize = sceneSize
 	local myCam = Freecamera()
 	myCam.pos = [0, 0, 3000]
 	myCam.fov = 53.13
 	myCam.orthoProjection = true
 	myCam.baseObject.targetDistance = mySize.x
 	
-	renderWidth = mySize.x
-	renderHeight = mySize.y
+	local maxEdge = 512
+	if mySize.x > mySize.y then
+	(
+		renderWidth = maxEdge
+		renderHeight = maxEdge * mySize.y / mySize.x
+	)else
+	(
+		renderWidth = maxEdge * mySize.x / mySize.y
+		renderHeight = maxEdge
+	)
 	
 	ChangeToVray()
+	--useEnvironmentMap = off
+	--backgroundColor = color 255 255 255
+	--local tempLight = Omnilight multiplier:0
+	pngio.settype(#true24)
 	pngio.setAlpha true;
-	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[mySize.x,mySize.y] outputfile:topPngPath
+	render camera:myCam rendertype:#normal vfb:off progressBar:true outputSize:[renderWidth,renderHeight] outputfile:topPngPath
+	--delete tempLight
+	ungroup bigGroup
 	print ("Finished " + "AlignScene")	
 	return mySize
 	
@@ -279,6 +465,7 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 (
 	try
 	(
+		
 		local zipFilename = getFilenameFile zipPath
 		if zipPath == "" then
 		(
@@ -287,24 +474,31 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 		
 		ReadMaxScene maxScenename
 		
-		if CheckScene taskID == false then return false
+		local sceneSize = CheckScene taskID
+		if sceneSize == false then
+		(
+			return false
+		)
 		
 		local top_view_png = meshToolPath + "/MAP/top_view.png"
-		local sceneSize = AlignScene top_view_png
+		AlignScene top_view_png sceneSize
 		local essPack = ExportESS meshToolPath zipFilename
 		OptimizeMesh 4000
 		AttachMeshs()
 		AutoUnwrapUV()
 		local texPath = BackTexture (meshToolPath + "/OBJ/") 1024
 		local objPath = ExportMeshs meshToolPath zipFilename
-		UploadESSAndObj essPack objPath texPath top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
-		--UploadESSAndObj "" "" "" top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
-		--copyFile objPack ("E:/OBJS/" + (filenameFromPath objPack))
+		local mtlPath = meshToolPath + "\\OBJ\\export.mtl"
+		
+		UploadESSAndObj essPack objPath texPath mtlPath top_view_png sceneSize.x sceneSize.y sceneSize.z 0 taskID
 	)
 	catch
 	(
 		print "Find Error!"
-		print getCurrentException()
+		format "*** % ***\n" (getCurrentException())
+		resetMaxFile #noprompt
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 10 taskID
 	)
-	
 )
+uiaccessor.closedialog (windows.getchildhwnd 0 "MAXScript Listener")[1]
+renderSceneDialog.close()

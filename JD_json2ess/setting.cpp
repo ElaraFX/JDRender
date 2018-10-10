@@ -48,7 +48,16 @@ void getGlobalSettings(Json::Value &global_settings, EH_Context *ctx)
 		}
 		if (global_settings["renderSettings"].isMember("quality"))
 		{
-			g_s.quality = EH_RenderQuality(global_settings["renderSettings"]["quality"].asInt());
+			// 0: fast; 1: quality
+			int q = EH_RenderQuality(global_settings["renderSettings"]["quality"].asInt());
+			if (q == 0)
+			{
+				g_s.quality = EH_MEDIUM;
+			}
+			else
+			{
+				g_s.quality = EH_HIGH; 
+			}
 		}
 	}
 }

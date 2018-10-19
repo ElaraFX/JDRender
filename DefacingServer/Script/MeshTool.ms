@@ -13,15 +13,15 @@ fn OptimizeMesh maxFace =
 		
 		if numfaces > 256 then
 		(	
-			if numfaces < 8000 then
+			if numfaces < (maxFace * 2.0) then
 			(
-				local factor = 1.0 - (numfaces / 8000.0) * 0.5
-				local vp = factor * 100.0
+				factor = 1.0 - (numfaces / (maxFace * 2.0)) * 0.5
+				vp = factor * 100.0
 			)
 			else
 			(
-				local vp = maxFace * 100 / numfaces
-			)			
+				vp = maxFace * 100 / numfaces
+			)		
 			
 			proOpt = ProOptimizer()
 			addmodifier OBJ proOpt
@@ -462,7 +462,7 @@ fn AlignScene topPngPath sceneSize =
 	
 )
 
-fn CallMeshTool maxScenename meshToolPath zipPath taskID=
+fn CallMeshTool maxScenename meshToolPath zipPath optimizeLevel taskID=
 (
 	try
 	(
@@ -484,7 +484,12 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 		local top_view_png = meshToolPath + "/MAP/top_view.png"
 		AlignScene top_view_png sceneSize
 		local essPack = ExportESS meshToolPath zipFilename
-		OptimizeMesh 4000
+		
+		if optimizeLevel > 3000 and optimizeLevel < 25000 then
+		(
+			OptimizeMesh optimizeLevel
+		)
+		
 		AttachMeshs()
 		AutoUnwrapUV()
 		local texPath = BackTexture (meshToolPath + "/OBJ/") 1024

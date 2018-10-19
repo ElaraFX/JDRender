@@ -39,7 +39,7 @@ void getLight(Json::Value &light, EH_Context *ctx)
 					l.type = EH_LIGHT_SPHERE;
 					if (light["customLights"][i].isMember("radius"))
 					{
-						l.size[0] = light["customLights"][i]["radius"].asFloat();
+						l.size[0] = max(MIN_LIGHT_SIZE, light["customLights"][i]["radius"].asFloat());
 					}
 				}
 				else if (light["customLights"][i]["type"].asString() == "quad")
@@ -47,11 +47,11 @@ void getLight(Json::Value &light, EH_Context *ctx)
 					l.type = EH_LIGHT_QUAD;
 					if (light["customLights"][i].isMember("width"))
 					{
-						l.size[0] = light["customLights"][i]["length"].asFloat();
+						l.size[0] = max(MIN_LIGHT_SIZE, light["customLights"][i]["length"].asFloat());
 					}
 					if (light["customLights"][i].isMember("height"))
 					{
-						l.size[1] = light["customLights"][i]["height"].asFloat();
+						l.size[1] = max(MIN_LIGHT_SIZE, light["customLights"][i]["height"].asFloat());
 					}
 				}
 				else if (light["customLights"][i]["type"].asString() == "spotlight")
@@ -81,6 +81,7 @@ void getLight(Json::Value &light, EH_Context *ctx)
 					l.light_color[1] = float((c / 256) % 256) / 255.0f;
 					l.light_color[2] = float(c % 256) / 255.0f;
 				}
+				l.intensity /= METERS_SCALE * METERS_SCALE;
 
 				float mat[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 				if (light["customLights"][i].isMember("matrixWorld"))
@@ -96,6 +97,8 @@ void getLight(Json::Value &light, EH_Context *ctx)
 					mat[8], mat[9], mat[10], mat[11],
 					mat[12], mat[13], mat[14], mat[15]
 					);
+
+				l_tran = y2z * l2r * l_tran * l2r * y2z;
 				memcpy(l.light_to_world, l_tran.m, sizeof(l.light_to_world));
 
 				char light_name[32] = "";

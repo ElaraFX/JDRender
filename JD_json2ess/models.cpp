@@ -257,7 +257,7 @@ void parseCustomModel(std::string &mesh, EH_Context *ctx, int idx, EH_Mesh &cust
 
 	if (flip_side)
 	{
-		for (int i = 0; i < custom_mesh.num_verts; ++i)
+		for (int i = 0; i < normal_data.size() / 3; ++i)
 		{
 			custom_mesh.normals[i][0] = -custom_mesh.normals[i][0];
 			custom_mesh.normals[i][1] = -custom_mesh.normals[i][1];
@@ -297,6 +297,12 @@ void getCustomModels(Json::Value &model, EH_Context *ctx)
 				{
 					side = model["customModels"][i]["side"].asInt();
 				}
+				// use for test
+				/*std::string tmp;
+				if (model["customModels"][i].isMember("uuid"))
+				{
+					tmp = model["customModels"][i]["uuid"].asString();
+				}*/
 
 				parseCustomModel(model["customModels"][i]["model"].asString(), ctx, i, mesh, (side == 1) ? true : false);
 

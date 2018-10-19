@@ -161,7 +161,7 @@ void startup(const TCHAR* lpApplicationName)
 
 int _tmain(int argc, TCHAR* argv[])
 {
-    if (argc != 3)
+    if (argc != 4)
     {
         printf("Params don't correct!\n");
         return 0;
@@ -169,7 +169,8 @@ int _tmain(int argc, TCHAR* argv[])
     TCHAR exePath[MAX_PATH];
     //TCHAR* exportPath = "E:\\Mesh\\";
     TCHAR* zipFilename = argv[1];
-    TCHAR* taskID = argv[2];
+    TCHAR* optimizeLevel = argv[2];
+    TCHAR* taskID = argv[3];
     GetCurrentDirectory(MAX_PATH, exePath);
 
     tstring removeMaxs = tstring(_T("rd /S/Q ")) + exePath + tstring(_T("\\MAX"));
@@ -261,7 +262,8 @@ int _tmain(int argc, TCHAR* argv[])
 								SendMessage(scriptHWnd, WM_SETTEXT, 0, (LPARAM)runScript.c_str());
 								SendMessage(scriptHWnd, WM_CHAR, VK_RETURN, 0);
 
-								tstring callMeshtool = _T("CallMeshTool \"") + maxFilename + _T("\" \"") + tstring(exePath) + _T("\" \"") + zipFilename + _T("\" \"") + taskID + _T("\"\n");
+                                std::replace(maxFilename.begin(), maxFilename.end(), _T('\\'), _T('/'));
+								tstring callMeshtool = _T("CallMeshTool \"") + maxFilename + _T("\" \"") + tstring(exePath) + _T("\" \"") + zipFilename + _T("\" ")  + optimizeLevel +  _T(" \"") + taskID + _T("\"\n");
 								SendMessage(scriptHWnd, WM_SETTEXT, 0, (LPARAM)callMeshtool.c_str());
 								SendMessage(scriptHWnd, WM_CHAR, VK_RETURN, 0);
 							}

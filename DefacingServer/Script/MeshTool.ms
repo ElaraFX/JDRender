@@ -406,7 +406,7 @@ fn CheckScene taskID =
 	
 	for i in sceneMaterials do 
 	(
-		if (i.category != #standard) and (i.category != #VRay) and (i.category != #2D) then
+		if (i.category != #standard) and (i.category != #VRay) and (superclassof i != textureMap) then
 		(
 			UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 8 taskID
 			return false
@@ -420,6 +420,18 @@ fn CheckScene taskID =
 		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 7 taskID
 		return false
 	)	
+	
+	for i = 1 to 24 do (meditMaterials[i] = Standardmaterial ())
+	local bitmap_files
+	actionMan.executeAction -841213575 "23"
+	atsops.Refresh()
+	atsops.getfiles &bitmap_files
+	missing_maps = for bm in bitmap_files where not doesFileExist (mapPaths.getFullFilePath bm) collect bm
+	if missing_maps.count > 0 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 11 taskID
+		return false
+	)
 	
 	return sceneSize
 )

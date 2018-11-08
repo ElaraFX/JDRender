@@ -159,6 +159,13 @@ void startup(const TCHAR* lpApplicationName)
     CloseHandle(pi.hThread);
 }
 
+long GetFileSize(tstring filename)
+{
+    struct _stat stat_buf;
+    int rc = _tstat(filename.c_str(), &stat_buf);
+    return rc == 0 ? stat_buf.st_size : -1;
+}
+
 int _tmain(int argc, TCHAR* argv[])
 {
     if (argc != 4)
@@ -207,26 +214,41 @@ int _tmain(int argc, TCHAR* argv[])
             return 0;
         }        
     }
-    
-    TCHAR	zipCommandStr[MAX_PATH];
-    _stprintf_s(zipCommandStr, _T("7z x \"%s\" -y -aoa -o\"%s\\Max\\%s\\\""), zipFilename, exePath, taskID);
 
-    _tsystem(zipCommandStr);
+    tstring zipFilename_t = zipFilename;
+    size_t offset = zipFilename_t.find_last_of('.');
+    tstring fileExt = zipFilename_t.substr(offset + 1);
+    transform(fileExt.begin(), fileExt.end(), fileExt.begin(), ::tolower);
 
-    TCHAR	maxPathStr[MAX_PATH];
-    _stprintf_s(maxPathStr, _T("%s\\Max\\%s\\"), exePath, taskID);
-    TCHAR	maxFilenameStr[MAX_PATH];
+    tstring	maxFilename;
     maxFileSize = 0;
-    tstring	maxFilename = FindMaxFile2(maxPathStr);
-    if (maxFilename.empty())
+    if (fileExt == _T("skp"))
     {
-        printf("Can't find max file!\n");
-        tstring errorCommand = _T("UploadESSAndObj 0 0 0 0 0 0 0 0 3 ") + tstring(taskID);
-        _tsystem(errorCommand.c_str());
-        return 0;
+        maxFileSize = GetFileSize(zipFilename_t);
+        maxFilename = zipFilename;
+    }
+    else
+    {
+        TCHAR	zipCommandStr[MAX_PATH];
+        _stprintf_s(zipCommandStr, _T("7z x \"%s\" -y -aoa -o\"%s\\Max\\%s\\\""), zipFilename, exePath, taskID);
+
+        _tsystem(zipCommandStr);
+
+        TCHAR	maxPathStr[MAX_PATH];
+        _stprintf_s(maxPathStr, _T("%s\\Max\\%s\\"), exePath, taskID);
+        TCHAR	maxFilenameStr[MAX_PATH];
+
+        maxFilename = FindMaxFile2(maxPathStr);
+        if (maxFilename.empty())
+        {
+            printf("Can't find max file!\n");
+            tstring errorCommand = _T("UploadESSAndObj 0 0 0 0 0 0 0 0 3 ") + tstring(taskID);
+            _tsystem(errorCommand.c_str());
+            return 0;
+        }
     }
 
-    if (maxFileSize > 100000000)
+    if (maxFileSize > 350000000)
     {
         printf("max file is big!\n");
         tstring errorCommand = _T("UploadESSAndObj 0 0 0 0 0 0 0 0 5 ") + tstring(taskID);

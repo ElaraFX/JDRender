@@ -310,6 +310,26 @@ fn ReadMaxScene pName =
 	print ("Finished " + "ReadMaxScene")
 )
 
+fn ReadSkpScene pName = 
+(
+	resetMaxFile #noprompt
+	units.SystemScale = 1
+	units.displaytype = #metric
+	units.MetricType = #Millimeters
+	units.SystemType = #Millimeters
+	
+	try
+	(
+		ImportFile pName #noPrompt
+	)
+	catch
+	(
+		print "Wrong skp File!"
+	)
+	
+	print ("Finished " + "ReadSkpScene")
+)
+
 fn UploadESSAndObj essPack objPath texPath mtlPath topTexPath x y z errorID taskID=
 (
 	local uplocalCommand = "UploadESSAndObj "
@@ -421,6 +441,7 @@ fn CheckScene taskID =
 		return false
 	)	
 	
+	environmentMap = null
 	for i = 1 to 24 do (meditMaterials[i] = Standardmaterial ())
 	local bitmap_files
 	actionMan.executeAction -841213575 "23"
@@ -484,8 +505,17 @@ fn CallMeshTool maxScenename meshToolPath zipPath optimizeLevel taskID=
 		(
 			zipFilename = "export"
 		)
+		local filetype = getFilenameType maxScenename
+		local isSkp = (filetype == ".skp" or filetype == ".SKP" or filetype == ".Skp")
 		
-		ReadMaxScene maxScenename
+		if isSkp then
+		(
+			ReadSkpScene maxScenename
+		)
+		else
+		(
+			ReadMaxScene maxScenename
+		)	
 		
 		local sceneSize = CheckScene taskID
 		if sceneSize == false then
@@ -497,9 +527,12 @@ fn CallMeshTool maxScenename meshToolPath zipPath optimizeLevel taskID=
 		AlignScene top_view_png sceneSize
 		local essPack = ExportESS meshToolPath zipFilename
 		
-		if optimizeLevel > 3000 and optimizeLevel < 25000 then
+		if not isSkp then
 		(
-			OptimizeMesh optimizeLevel
+			if optimizeLevel > 3000 and optimizeLevel < 25000 then
+			(
+				OptimizeMesh optimizeLevel
+			)
 		)
 		
 		AttachMeshs()

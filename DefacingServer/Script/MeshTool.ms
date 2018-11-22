@@ -296,6 +296,7 @@ fn ReadMaxScene pName =
 	units.displaytype = #metric
 	units.MetricType = #Millimeters
 	units.SystemType = #Millimeters
+	
 	setVRaySilentMode()
 	
 	try
@@ -306,7 +307,7 @@ fn ReadMaxScene pName =
 	(
 		print "Wrong max File!"
 	)
-	
+
 	print ("Finished " + "ReadMaxScene")
 )
 
@@ -443,6 +444,7 @@ fn CheckScene taskID =
 	
 	environmentMap = null
 	for i = 1 to 24 do (meditMaterials[i] = Standardmaterial ())
+	for i = 1 to batchRenderMgr.numViews do batchRenderMgr.DeleteView 1
 	local bitmap_files
 	actionMan.executeAction -841213575 "23"
 	atsops.Refresh()

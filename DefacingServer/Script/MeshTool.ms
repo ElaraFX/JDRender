@@ -307,6 +307,7 @@ fn ReadMaxScene pName =
 	(
 		print "Wrong max File!"
 	)
+	renderers.renderDialogMode = #production
 
 	print ("Finished " + "ReadMaxScene")
 )
@@ -408,7 +409,7 @@ fn CheckScene taskID =
 		return false
 	)
 	
-	if Geometry.count > 100 then
+	if Geometry.count > 250 then
 	(
 		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 2 taskID
 		return false
@@ -512,7 +513,7 @@ fn CallMeshTool maxScenename meshToolPath zipPath optimizeLevel taskID=
 		
 		if isSkp then
 		(
-			ReadSkpScene maxScenename
+			ReadMaxScene maxScenename
 		)
 		else
 		(

@@ -70,8 +70,9 @@ tstring FindMaxFile2(tstring folderPath)
         else
         {
             tstring fileName = FileInfo.name;
-            tstring maxExt = fileName.substr(fileName.size() - 3, 3);
-            if (maxExt == _T("max"))
+            size_t dot_offset = fileName.find_last_of(_T('.'));
+
+            if (dot_offset != -1 && fileName.substr(dot_offset + 1) == _T("max"))
             {
                 maxFileSize = FileInfo.size;
                 tstring maxPath = folderPath + _T("\\") + FileInfo.name;

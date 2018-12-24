@@ -6,22 +6,22 @@ global meshToolRunTimes
 
 fn OptimizeMesh maxFace = 
 (
-	for OBJ in Geometry do(
+	for OBJ in Geometry  where (canconvertto OBJ Editable_Mesh) do(
 		InstanceMgr.MakeObjectsUnique OBJ #prompt
 		local numfaces = OBJ.mesh.numfaces
 		
 		
 		if numfaces > 256 then
 		(	
-			if numfaces < 8000 then
+			if numfaces < (maxFace * 2.0) then
 			(
-				local factor = 1.0 - (numfaces / 8000.0) * 0.5
-				local vp = factor * 100.0
+				factor = 1.0 - (numfaces / (maxFace * 2.0)) * 0.5
+				vp = factor * 100.0
 			)
 			else
 			(
-				local vp = maxFace * 100 / numfaces
-			)			
+				vp = maxFace * 100 / numfaces
+			)		
 			
 			proOpt = ProOptimizer()
 			addmodifier OBJ proOpt
@@ -196,7 +196,7 @@ fn AttachMeshs =
 	glassObjects = #()
 	metalObjects = #()
 	
-	for OBJ in Geometry do(
+	for OBJ in Geometry where (canconvertto OBJ Editable_Mesh) do(
 		try(
 			--resetxform OBJ
 			convertToPoly OBJ
@@ -248,6 +248,7 @@ fn ChangeToVray =
 	renderers.current.progressive_maxSamples = 4
 	renderers.current.gi_on = false
 	renderers.current.options_displacement = false
+	renderers.current.options_defaultLights = 2
 	
 	rendOutputFilename = ""
 	rendSaveFile = false
@@ -295,6 +296,7 @@ fn ReadMaxScene pName =
 	units.displaytype = #metric
 	units.MetricType = #Millimeters
 	units.SystemType = #Millimeters
+	
 	setVRaySilentMode()
 	
 	try
@@ -305,8 +307,29 @@ fn ReadMaxScene pName =
 	(
 		print "Wrong max File!"
 	)
-	
+	renderers.renderDialogMode = #production
+
 	print ("Finished " + "ReadMaxScene")
+)
+
+fn ReadSkpScene pName = 
+(
+	resetMaxFile #noprompt
+	units.SystemScale = 1
+	units.displaytype = #metric
+	units.MetricType = #Millimeters
+	units.SystemType = #Millimeters
+	
+	try
+	(
+		ImportFile pName #noPrompt
+	)
+	catch
+	(
+		print "Wrong skp File!"
+	)
+	
+	print ("Finished " + "ReadSkpScene")
 )
 
 fn UploadESSAndObj essPack objPath texPath mtlPath topTexPath x y z errorID taskID=
@@ -343,7 +366,7 @@ fn UploadESSAndObj essPack objPath texPath mtlPath topTexPath x y z errorID task
 
 fn GetSceneSize =
 (
-	local clearObjs = for obj in Geometry collect obj
+	local clearObjs = for obj in Geometry  where (canconvertto obj Editable_Mesh) collect obj
 	local myBox = Box3()
 	for obj in clearObjs do
 	(
@@ -386,14 +409,14 @@ fn CheckScene taskID =
 		return false
 	)
 	
-	if Geometry.count > 100 then
+	if Geometry.count > 250 then
 	(
 		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 2 taskID
 		return false
 	)
 	
 	local numfaces = 0
-	for OBJ in Geometry do(
+	for OBJ in Geometry where (canconvertto OBJ Editable_Mesh) do(
 		numfaces += OBJ.mesh.numfaces
 	)
 	
@@ -405,7 +428,7 @@ fn CheckScene taskID =
 	
 	for i in sceneMaterials do 
 	(
-		if (i.category != #standard) and (i.category != #VRay) and (i.category != #2D) then
+		if (i.category != #standard) and (i.category != #VRay) and (superclassof i != textureMap) then
 		(
 			UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 8 taskID
 			return false
@@ -420,13 +443,27 @@ fn CheckScene taskID =
 		return false
 	)	
 	
+	environmentMap = null
+	for i = 1 to 24 do (meditMaterials[i] = Standardmaterial ())
+	for i = 1 to batchRenderMgr.numViews do batchRenderMgr.DeleteView 1
+	local bitmap_files
+	actionMan.executeAction -841213575 "23"
+	atsops.Refresh()
+	atsops.getfiles &bitmap_files
+	missing_maps = for bm in bitmap_files where not doesFileExist (mapPaths.getFullFilePath bm) collect bm
+	if missing_maps.count > 0 then
+	(
+		UploadESSAndObj "0" "0" "0" "0" "0" 0 0 0 11 taskID
+		return false
+	)
+	
 	return sceneSize
 )
 
 fn AlignScene topPngPath sceneSize =
 (
-	max select all
-	bigGroup = group selection
+	local geoObjs = for obj in Geometry  where (canconvertto obj Editable_Mesh) collect obj
+	bigGroup = group geoObjs
 	bigGroup.pos = [0, 0, 0]
 	
 	local mySize = sceneSize
@@ -461,7 +498,7 @@ fn AlignScene topPngPath sceneSize =
 	
 )
 
-fn CallMeshTool maxScenename meshToolPath zipPath taskID=
+fn CallMeshTool maxScenename meshToolPath zipPath optimizeLevel taskID=
 (
 	try
 	(
@@ -471,8 +508,17 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 		(
 			zipFilename = "export"
 		)
+		local filetype = getFilenameType maxScenename
+		local isSkp = (filetype == ".skp" or filetype == ".SKP" or filetype == ".Skp")
 		
-		ReadMaxScene maxScenename
+		if isSkp then
+		(
+			ReadMaxScene maxScenename
+		)
+		else
+		(
+			ReadMaxScene maxScenename
+		)	
 		
 		local sceneSize = CheckScene taskID
 		if sceneSize == false then
@@ -483,7 +529,15 @@ fn CallMeshTool maxScenename meshToolPath zipPath taskID=
 		local top_view_png = meshToolPath + "/MAP/top_view.png"
 		AlignScene top_view_png sceneSize
 		local essPack = ExportESS meshToolPath zipFilename
-		OptimizeMesh 4000
+		
+		if not isSkp then
+		(
+			if optimizeLevel > 3000 and optimizeLevel < 25000 then
+			(
+				OptimizeMesh optimizeLevel
+			)
+		)
+		
 		AttachMeshs()
 		AutoUnwrapUV()
 		local texPath = BackTexture (meshToolPath + "/OBJ/") 1024

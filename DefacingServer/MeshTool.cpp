@@ -70,8 +70,9 @@ tstring FindMaxFile2(tstring folderPath)
         else
         {
             tstring fileName = FileInfo.name;
-            tstring maxExt = fileName.substr(fileName.size() - 3, 3);
-            if (maxExt == _T("max"))
+            size_t dot_offset = fileName.find_last_of(_T('.'));
+
+            if (dot_offset != -1 && fileName.substr(dot_offset + 1) == _T("max"))
             {
                 maxFileSize = FileInfo.size;
                 tstring maxPath = folderPath + _T("\\") + FileInfo.name;
@@ -159,9 +160,16 @@ void startup(const TCHAR* lpApplicationName)
     CloseHandle(pi.hThread);
 }
 
+long GetFileSize(tstring filename)
+{
+    struct _stat stat_buf;
+    int rc = _tstat(filename.c_str(), &stat_buf);
+    return rc == 0 ? stat_buf.st_size : -1;
+}
+
 int _tmain(int argc, TCHAR* argv[])
 {
-    if (argc != 3)
+    if (argc != 4)
     {
         printf("Params don't correct!\n");
         return 0;
@@ -169,7 +177,8 @@ int _tmain(int argc, TCHAR* argv[])
     TCHAR exePath[MAX_PATH];
     //TCHAR* exportPath = "E:\\Mesh\\";
     TCHAR* zipFilename = argv[1];
-    TCHAR* taskID = argv[2];
+    TCHAR* optimizeLevel = argv[2];
+    TCHAR* taskID = argv[3];
     GetCurrentDirectory(MAX_PATH, exePath);
 
     tstring removeMaxs = tstring(_T("rd /S/Q ")) + exePath + tstring(_T("\\MAX"));
@@ -206,26 +215,41 @@ int _tmain(int argc, TCHAR* argv[])
             return 0;
         }        
     }
-    
-    TCHAR	zipCommandStr[MAX_PATH];
-    _stprintf_s(zipCommandStr, _T("7z x \"%s\" -y -aoa -o\"%s\\Max\\%s\\\""), zipFilename, exePath, taskID);
 
-    _tsystem(zipCommandStr);
+    tstring zipFilename_t = zipFilename;
+    size_t offset = zipFilename_t.find_last_of('.');
+    tstring fileExt = zipFilename_t.substr(offset + 1);
+    transform(fileExt.begin(), fileExt.end(), fileExt.begin(), ::tolower);
 
-    TCHAR	maxPathStr[MAX_PATH];
-    _stprintf_s(maxPathStr, _T("%s\\Max\\%s\\"), exePath, taskID);
-    TCHAR	maxFilenameStr[MAX_PATH];
+    tstring	maxFilename;
     maxFileSize = 0;
-    tstring	maxFilename = FindMaxFile2(maxPathStr);
-    if (maxFilename.empty())
+    if (fileExt == _T("skp"))
     {
-        printf("Can't find max file!\n");
-        tstring errorCommand = _T("UploadESSAndObj 0 0 0 0 0 0 0 0 3 ") + tstring(taskID);
-        _tsystem(errorCommand.c_str());
-        return 0;
+        maxFileSize = GetFileSize(zipFilename_t);
+        maxFilename = zipFilename;
+    }
+    else
+    {
+        TCHAR	zipCommandStr[MAX_PATH];
+        _stprintf_s(zipCommandStr, _T("7z x \"%s\" -y -aoa -o\"%s\\Max\\%s\\\""), zipFilename, exePath, taskID);
+
+        _tsystem(zipCommandStr);
+
+        TCHAR	maxPathStr[MAX_PATH];
+        _stprintf_s(maxPathStr, _T("%s\\Max\\%s\\"), exePath, taskID);
+        TCHAR	maxFilenameStr[MAX_PATH];
+
+        maxFilename = FindMaxFile2(maxPathStr);
+        if (maxFilename.empty())
+        {
+            printf("Can't find max file!\n");
+            tstring errorCommand = _T("UploadESSAndObj 0 0 0 0 0 0 0 0 3 ") + tstring(taskID);
+            _tsystem(errorCommand.c_str());
+            return 0;
+        }
     }
 
-    if (maxFileSize > 100000000)
+    if (maxFileSize > 350000000)
     {
         printf("max file is big!\n");
         tstring errorCommand = _T("UploadESSAndObj 0 0 0 0 0 0 0 0 5 ") + tstring(taskID);
@@ -261,7 +285,8 @@ int _tmain(int argc, TCHAR* argv[])
 								SendMessage(scriptHWnd, WM_SETTEXT, 0, (LPARAM)runScript.c_str());
 								SendMessage(scriptHWnd, WM_CHAR, VK_RETURN, 0);
 
-								tstring callMeshtool = _T("CallMeshTool \"") + maxFilename + _T("\" \"") + tstring(exePath) + _T("\" \"") + zipFilename + _T("\" \"") + taskID + _T("\"\n");
+                                std::replace(maxFilename.begin(), maxFilename.end(), _T('\\'), _T('/'));
+								tstring callMeshtool = _T("CallMeshTool \"") + maxFilename + _T("\" \"") + tstring(exePath) + _T("\" \"") + zipFilename + _T("\" ")  + optimizeLevel +  _T(" \"") + taskID + _T("\"\n");
 								SendMessage(scriptHWnd, WM_SETTEXT, 0, (LPARAM)callMeshtool.c_str());
 								SendMessage(scriptHWnd, WM_CHAR, VK_RETURN, 0);
 							}

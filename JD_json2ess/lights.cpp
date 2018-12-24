@@ -2,6 +2,53 @@
 
 ElementMap g_ies_map;
 
+#define ILLUM_TO_INTENSITY_PARAM				0.0015f
+#define LUMINOUS_TO_RADIANT						683.0f
+#define ILLUM_TO_INTENSITY_PARAM_RADIANCE		0.699f
+
+enum LIGHT_UNITS_TYPE
+{
+	LIGHT_UNITS_IMAGE = 0,
+	LIGHT_UNITS_LUM_POWER,
+	LIGHT_UNITS_LUM,
+	LIGHT_UNITS_RAD_POWER,
+	LIGHT_UNITS_RAD,
+
+	LIGHT_UNITS_MAX
+};
+
+float convert_light_intensity(
+	float intens, 
+	float light_area,
+	LIGHT_UNITS_TYPE units)
+{
+	float intensity = 0.0f;
+	float meters_scale_param = (0.001f / METERS_SCALE) * (0.001f / METERS_SCALE);
+
+	if (units == LIGHT_UNITS_IMAGE) // Image
+	{
+		intensity = intens * light_area;
+	}
+	else if (units == LIGHT_UNITS_LUM_POWER) // Luminous power (lm)
+	{
+		intensity = intens * meters_scale_param / ILLUM_TO_INTENSITY_PARAM;
+	}
+	else if (units == LIGHT_UNITS_LUM) // Luminance (lm/m^2/sr)
+	{
+		intensity = intens * light_area / (LUMINOUS_TO_RADIANT * ILLUM_TO_INTENSITY_PARAM_RADIANCE);
+	}
+	else if (units == LIGHT_UNITS_RAD_POWER) // Radiant power (W)
+	{
+		intensity = intens * meters_scale_param * LUMINOUS_TO_RADIANT / ILLUM_TO_INTENSITY_PARAM;
+	}
+	else if (units == LIGHT_UNITS_RAD) // Radiance (W/m^2/sr)
+	{
+		intensity = intens * light_area / ILLUM_TO_INTENSITY_PARAM_RADIANCE;
+	}
+
+	return intensity;
+}
+
 void getIESList(Json::Value &ies_list)
 {
 	g_ies_map.clear();
@@ -81,7 +128,32 @@ void getLight(Json::Value &light, EH_Context *ctx)
 					l.light_color[1] = float((c / 256) % 256) / 255.0f;
 					l.light_color[2] = float(c % 256) / 255.0f;
 				}
-				l.intensity /= METERS_SCALE * METERS_SCALE;
+				if (light["customLights"][i].isMember("unit"))
+				{
+					if (light["customLights"][i]["unit"].asString() == "lm")
+					{
+						if (l.type == EH_LIGHT_QUAD)
+						{
+							l.intensity = convert_light_intensity(l.intensity, l.size[0] * l.size[1], LIGHT_UNITS_LUM_POWER);
+						}
+						else if (l.type == EH_LIGHT_SPHERE)
+						{
+							l.intensity = convert_light_intensity(l.intensity, 4.0f * EI_PI * l.size[0] * l.size[0], LIGHT_UNITS_LUM_POWER);
+						}
+						else if (l.type == EH_LIGHT_IES)
+						{
+
+						}
+					}
+					else
+					{
+						l.intensity /= METERS_SCALE * METERS_SCALE;
+					}
+				}
+				else
+				{
+					l.intensity /= METERS_SCALE * METERS_SCALE;
+				}
 
 				float mat[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 				if (light["customLights"][i].isMember("matrixWorld"))

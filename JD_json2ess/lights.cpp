@@ -142,7 +142,7 @@ void getLight(Json::Value &light, EH_Context *ctx)
 						}
 						else if (l.type == EH_LIGHT_IES)
 						{
-
+							l.intensity /= METERS_SCALE * METERS_SCALE;
 						}
 					}
 					else
@@ -153,6 +153,11 @@ void getLight(Json::Value &light, EH_Context *ctx)
 				else
 				{
 					l.intensity /= METERS_SCALE * METERS_SCALE;
+				}
+
+				if (l.type == EH_LIGHT_IES)
+				{
+					l.intensity /= 1000.0f;
 				}
 
 				float mat[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};

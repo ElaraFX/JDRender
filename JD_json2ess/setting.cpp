@@ -78,14 +78,6 @@ void getEnvironment(Json::Value &envi, EH_Context *ctx)
 				sky.hdri_rotation = 0.0f;
 			}
 		}
-		if (envi["environmental"].isMember("color"))
-		{
-			int c = envi["environmental"]["color"].asInt();
-			sky.color[0] = float((c / 256 / 256) % 256) / 255.0f;
-			sky.color[1] = float((c / 256) % 256) / 255.0f;
-			sky.color[2] = float(c % 256) / 255.0f;
-		}
-		
 		if (envi["environmental"].isMember("strength"))
 		{
 			sky.intensity = envi["environmental"]["strength"].asFloat();
@@ -94,6 +86,14 @@ void getEnvironment(Json::Value &envi, EH_Context *ctx)
 		{
 			sky.intensity = 1.0f;
 		}
+		if (envi["environmental"].isMember("color"))
+		{
+			int c = envi["environmental"]["color"].asInt();
+			sky.color[0] = sky.intensity * float((c / 256 / 256) % 256) / 255.0f;
+			sky.color[1] = sky.intensity * ((c / 256) % 256) / 255.0f;
+			sky.color[2] = sky.intensity * float(c % 256) / 255.0f;
+		}
+		
 		EH_set_sky(ctx, &sky);
 
 		// sunlight
